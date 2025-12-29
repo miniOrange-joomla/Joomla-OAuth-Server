@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<extension version="3.0" type="package" method="upgrade">
+	<name>Package - miniOrange OAuth Server</name>
+	<packagename>oauthserver</packagename>
+	<version>5.0.6</version>
+	<author>miniOrange Security Software Pvt. Ltd.</author>
+    <authorEmail>info@xecurify.com</authorEmail>
+    <authorUrl>https://www.miniorange.com/</authorUrl>
+    <copyright>Copyright (C) 2015 miniOrange. All rights reserved.</copyright>
+    <license>GNU General Public License version 3; see LICENSE.txt</license>
+	<creationDate>Nov 2018</creationDate>
+	<description>Plugin package for miniOrange OAuth Server for Joomla has been downloaded successfully!</description>
+	<scriptfile>pkg_script.php</scriptfile>
+	<files>
+		<file type="plugin" id="mooauthserver" group="system">plg_system_mooauthserver.zip</file>
+		<file type="component" id="miniorange_oauthserver" >com_miniorange_oauthserver.zip</file>
+		<file type="plugin" id="miniorangeoauthserver" group="user">plg_user_miniorangeoauthserver.zip</file>
+        <file type="plugin" id="mooauthserver" group="webservices">plg_webservices_mooauthserver.zip</file>
+		<file type="library" id="miniorangeoauthserver">lib_miniorangeoauthserver.zip</file>
+	</files>
+	<languages folder="language">
+		<language tag="en-GB">en-GB/en-GB.pkg_miniorangeoauthserver.ini</language>
+		<language tag="en-GB">en-GB/en-GB.pkg_miniorangeoauthserver.sys.ini</language>
+	</languages>
+	<updateservers>
+		<server type="extension" priority="1" name="oauthserver">https://prod-marketing-site.s3.amazonaws.com/plugins/joomla/joomla_oauth_server_update.xml</server>
+	</updateservers>
+</extension>
