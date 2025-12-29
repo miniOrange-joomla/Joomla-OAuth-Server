@@ -80,10 +80,21 @@ class pkg_OAUTHSERVERInstallerScript
     function postflight($type, $parent) 
     {
   
-       if ($type == 'uninstall') {
-        return true;
+        if ($type == 'uninstall') {
+            return true;
         }
-       $this->showInstallMessage('');
+
+        $helperPath = JPATH_ADMINISTRATOR . '/components/com_miniorange_oauthserver/helpers/mo_customer_setup.php';
+        if (file_exists($helperPath)) {
+            require_once $helperPath;
+            
+            if (class_exists('MoCustomerSetupHelper')) {
+                MoOauthServerCustomer::sendInstallationNotification(); 
+            }
+        }
+
+        $this->showInstallMessage('');
+        
     }
 
     protected function showInstallMessage($messages=array()) {
@@ -119,7 +130,7 @@ class pkg_OAUTHSERVERInstallerScript
                 </p>
             </p>
             <a class="btn btn-secondary" style="background-color: #001b4c; color : white"  href="index.php?option=com_miniorange_oauthserver&view=accountsetup&tab-panel=configuration">Start Using miniOrange OAuth Server plugin</a>
-            <a class="btn btn-secondary" style="background-color: #001b4c; color : white" href="https://plugins.miniorange.com/joomla-oauth-server-guides" target="_blank">Setup guides</a>
+            <a class="btn btn-secondary" style="background-color: #001b4c; color : white" href="https://plugins.miniorange.com/joomla-sso-ldap-mfa-solutions?section=oauth-server" target="_blank">Setup guides</a>
 		    <a class="btn btn-secondary" style="background-color: #001b4c; color : white" href="https://www.miniorange.com/contact" target="_blank">Free Trial / Need assistance</a>
         </div>
         <?php

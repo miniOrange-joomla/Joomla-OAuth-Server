@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<extension version="3.5.1" type="plugin" group="user" method="upgrade">
+	<name>User - miniOrange OAuth Server</name>
+	<author>miniOrange Security Software Pvt. Ltd.</author>
+    <authorEmail>info@xecurify.com</authorEmail>
+    <authorUrl>https://www.miniorange.com/</authorUrl>
+    <copyright>Copyright (C) 2015 miniOrange. All rights reserved.</copyright>
+    <license>GNU General Public License version 3; see LICENSE.txt</license>
+	<creationDate>Nov 2018</creationDate>
+	<version>5.0.9</version>
+	<description>PLG_MINIORANGE_JOOMLA_IDP_XML_DESCRIPTION</description>
+
+	<files>
+		<filename plugin="miniorangeoauthserver">miniorangeoauthserver.php</filename>
+		<filename>index.html</filename>
+		<folder>language</folder>
+	</files>
+	<scriptfile>my_script.php</scriptfile>
+	<languages>
+		<language tag="en-GB">language/en-GB/en-GB.plg_user_miniorangeoauthserver.ini</language>
+		<language tag="en-GB">language/en-GB/en-GB.plg_user_miniorangeoauthserver.sys.ini</language>
+	</languages>
+	
+</extension>
