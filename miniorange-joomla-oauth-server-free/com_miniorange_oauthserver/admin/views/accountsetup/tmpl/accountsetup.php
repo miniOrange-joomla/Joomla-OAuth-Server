@@ -108,6 +108,11 @@ $tabs = [
             <i class="fa-solid fa-envelope"></i>
             <?php echo Text::_('COM_MINIORANGE_OAUTHSERVER_SUPPORT');?>
         </a>
+        <a class="mo_boot_px-4 mo_boot_py-1 oauth_blue_button btn_oauth_custom_top"
+           href="<?php echo Uri::base(); ?>index.php?option=com_miniorange_oauthserver&view=accountsetup&tab-panel=requestdemo&sub-tab=mo_request_demo">
+           <i class="fa-solid fa-globe"></i>
+           <?php echo Text::_('COM_MINIORANGE_OAUTHSERVER_FREE_TRIAL'); ?>
+        </a>
     </div>
 </div>
 
@@ -1010,7 +1015,7 @@ function mo_oauth_server_request_demo()
                         <strong><span><?php echo Text::_('COM_MINIORANGE_OAUTHSERVER_REQUEST_DEMO_TRIAL');?></span></strong>
                     </div>
                     <div class="mo_boot_col-sm-9">
-                        <input type="text" class="mo_boot_form-control mo_OAuth_textbox_border" value="Joomla OAuth Server Premium Plugin" <?php echo Text::_('COM_MINIORANGE_OAUTHSERVER_JOOMLA_OAUTH_SERVER_PREMIUM_PLUGIN');?> readonly>
+                        <input type="text" class="mo_boot_form-control mo_OAuth_textbox_border" name="plan" value="<?php echo Text::_('COM_MINIORANGE_OAUTHSERVER_JOOMLA_OAUTH_SERVER_PREMIUM_PLUGIN');?>" readonly >
                     </div>
                 </div>
 
@@ -1088,7 +1093,7 @@ function mo_oauth_server_licensing_plan()
                             <div class="mo_oauth_license_plan_name"><?php echo Text::_('COM_MINIORANGE_FEATURE_COMPARISION_FREE_PLAN'); ?></div>
                             <div class="mo_oauth_license_price mo_boot_my-2"><?php echo Text::_('COM_MINIORANGE_FREE'); ?><small><small></small></small></div>
                             <div class="mo_oauth_license_btn">
-                                <a href=""><?php echo Text::_('COM_MINIORANGE_OAUTH_CURRENT_PLAN'); ?></a>
+                                <a href="index.php?option=com_miniorange_oauthserver&view=accountsetup&tab-panel=license"><?php echo Text::_('COM_MINIORANGE_OAUTH_CURRENT_PLAN'); ?></a>
                             </div>
 
                             <div class="mo_boot_my-4">
@@ -1132,10 +1137,10 @@ function mo_oauth_server_licensing_plan()
 
                         <!-- Premium -->
                          <div class="mo_oauth_pricing_table">
-                            <div class="mo_oauth_license_plan_name"><?php echo Text::_('COM_MINIORANGE_FEATURE_COMPARISION_PREMIUM_PLAN'); ?></div>
-                            <div class="mo_oauth_license_price mo_boot_py-3"><p>  </p><small><small></small></small></div>
+                            <div class="mo_oauth_license_plan_name"><?php echo Text::_('COM_MINIORANGE_FEATURE_COMPARISION_PREMIUM_PLAN'); ?><small style="font-weight: 500;"><small> (monthly and yearly plans available)</small></small></div>
+                            <div class="mo_oauth_license_price mo_boot_py-3"><p></p></div>
                             <div class="mo_oauth_license_btn mo_boot_mt-4">
-                                <a href="https://plugins.miniorange.com/joomla-oauth-server#price"><?php echo Text::_('COM_MINIORANGE_FEATURE_COMPARISION_BASIC_PLAN_COST'); ?></a>
+                                <a href="https://plugins.miniorange.com/joomla-oauth-server#pricing" target="_blank"><?php echo Text::_('COM_MINIORANGE_FEATURE_COMPARISION_BASIC_PLAN_COST'); ?></a>
                             </div>
 
                             <div class="mo_boot_my-4">
@@ -1169,7 +1174,7 @@ function mo_oauth_server_licensing_plan()
                 </div>
             </div>
 
-            <div class="mo_boot_col-sm-12">
+            <div class="mo_boot_px-5">
                 <div class="mo_boot_col-sm-12 mo_boot_mt-4 mo_oauth_mini_section">
                     <div class="mo_oauth_tab_header mo_boot_d-flex mo_oauth_justify-content-between mo_oauth_align-items-center mo_boot_p-3"
                          onclick="toggleCollapse('mo_oauth_how_to_upgrade', this.querySelector('.mo_toggle_icon'))">
@@ -1296,7 +1301,7 @@ function mo_oauth_show_advance_mapping()
                                                 <input type="text" class="mo_oauth_server_textfield mo_boot_form-control" disabled="disabled" placeholder="<?php echo Text::_('COM_MINIORANGE_OAUTHSERVER_CUSTOM_ATTRIBUTE_PLACEHOLDER');?>"/>
                                             </div>
                                             <div class="mo_boot_col-sm-6 mo_boot_mt-2">
-                                                <select class="mo_oauth_server_textfield mo_boot_form-control" disabled="disabled">
+                                                <select class="mo_oauth_server_textfield mo_boot_form-control">
                                                     <option value=""><?php echo Text::_('COM_MINIORANGE_OAUTHSERVER_SELECT_CUSTOM_ATTRIBUTE');?></option>
                                                     <option value="emailAddress"><?php echo Text::_('COM_MINIORANGE_OAUTHSERVER_CUSTOM_ATTRIBUTES_EMAIL_ADDRESS');?></option>
                                                     <option value="username"><?php echo Text::_('COM_MINIORANGE_OAUTHSERVER_CUSTOM_ATTRIBUTES_USERNAME');?></option>

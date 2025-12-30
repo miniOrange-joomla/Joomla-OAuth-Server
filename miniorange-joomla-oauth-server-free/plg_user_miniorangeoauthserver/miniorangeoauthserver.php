@@ -36,7 +36,6 @@ class plgUserMiniorangeoauthserver extends CMSPlugin
         $app   = Factory::getApplication();
         $input = method_exists($app, 'getInput') ? $app->getInput() : $app->input;
         $cookie = $input->cookie->getArray();
-        
         if(isset($cookie['response_params'])) {
             $response_params =  json_decode(stripslashes($cookie['response_params']), true);
         
@@ -73,6 +72,7 @@ class plgUserMiniorangeoauthserver extends CMSPlugin
             // $sso_url = "https://" . $sso_url;
             MoOAuthServerUtility::plugin_efficiency_check($user->get('email'), $response_params['clientName'], $redirecturi, "Sending Authorization Code");
             $redirecturi = $redirecturi . "?code=" . $randcode . "&state=" . $state;
+
             if(isset($response_params['redirect_uri']) ) {
                 $this->showConsentForm($user_id, $customerResult['client_id'],  $scope, $sso_url, $state, $customerResult['client_name'], $redirecturi);
             }

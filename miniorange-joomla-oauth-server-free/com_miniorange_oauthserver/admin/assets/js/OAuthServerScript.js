@@ -94,3 +94,25 @@ function toggleFeatureList(headerId) {
         arrow.classList.add("fa-chevron-down");
     }
 }
+
+jQuery(document).ready(function($) {
+    const params = new URLSearchParams(window.location.search);
+
+    const tabPanel = params.get('tab-panel');   
+    const subTab   = params.get('sub-tab'); 
+
+    if (tabPanel && subTab) {
+        const subMenuDiv = $(`.mo_oauth_sub_menu[onclick*="#${subTab}"]`).get(0);
+
+        if (subMenuDiv) {
+            changeSubMenu(`#${tabPanel}`, subMenuDiv, `#${subTab}`);
+
+            const $panel = $(`#${tabPanel}`);
+            if ($panel.length) {
+                $('html, body').scrollTop($panel.offset().top);
+            }
+        } else {
+            console.warn("Sub-tab element not found for:", subTab);
+        }
+    }
+});

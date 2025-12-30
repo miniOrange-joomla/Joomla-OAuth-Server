@@ -59,7 +59,7 @@ class plgSystemMooauthserver extends CMSPlugin
             $admin_phone = $customerResult['admin_phone'];
             $data1 = $radio.' : '.$data;
             require_once JPATH_BASE . DIRECTORY_SEPARATOR . 'components' . DIRECTORY_SEPARATOR . 'com_miniorange_oauthserver' . DIRECTORY_SEPARATOR . 'helpers' .DIRECTORY_SEPARATOR . 'mo_customer_setup.php';
-            MoOauthServerCustomer::submit_feedback_form($admin_email,$admin_phone,$data1);
+            $response = MoOauthServerCustomer::submit_feedback_form($admin_email, $admin_phone, $data1);
             require_once JPATH_SITE . DIRECTORY_SEPARATOR . 'libraries' . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR . 'Installer' .DIRECTORY_SEPARATOR . 'Installer.php';
 			foreach ($post['result'] as $fbkey) 
             {
@@ -80,7 +80,8 @@ class plgSystemMooauthserver extends CMSPlugin
                 {
                     $cid=0;
                     $installer = new Installer();
-                    $installer->uninstall ($type,$identifier,$cid);
+                    $installer->setDatabase(Factory::getDbo());
+                    $installer->uninstall($type, $identifier, $cid);
                 }
     		}
         }
@@ -149,8 +150,12 @@ class plgSystemMooauthserver extends CMSPlugin
 
                                     <?php
                                     $deactivate_reasons = array(
-                                        "Facing issues during configuration",
                                         "Does not have the features I'm looking for",
+                                        "Confusing Interface",
+                                        "Not able to Configure",
+                                        "Redirecting back to login page after Authentication",
+                                        "Not Working",
+                                        "Bugs in the plugin",  
                                         "Not able to Configure",
                                         "Other Reasons:"
                                     );
@@ -198,12 +203,10 @@ class plgSystemMooauthserver extends CMSPlugin
                                 <form name="f" method="post" action="" id="mojsp_feedback_form_close">
                                     <input type="hidden" name="option" value="mojsp_skip_feedback"/>
                                 </form>
-
                             </div>
                                 
                             <script src="https://code.jquery.com/jquery-1.11.3.min.js"></script>
                             <script>
-
                                 document.addEventListener("DOMContentLoaded", function () {
                                     const emailField = document.getElementById("feedback_email");
                                     const skipBtn = document.getElementById("skipBtn");
@@ -221,7 +224,7 @@ class plgSystemMooauthserver extends CMSPlugin
                                         document.getElementById("query_feedback").removeAttribute("required");
                                     });
                                 
-                                    // If user clicks Submit → email required
+                                    // When user clicks Submit → make fields mandatory
                                     submitBtn.addEventListener("click", function () {
                                         emailField.setAttribute("required", "required");
                                         radioButtons.forEach(r => r.setAttribute("required", "required"));
@@ -246,15 +249,17 @@ class plgSystemMooauthserver extends CMSPlugin
                                     });
                                 });
                             </script>
+
                             <style type="text/css">
-                                .form-style-6{
+                                .form-style-6 {
                                     font: 95% Arial, Helvetica, sans-serif;
                                     max-width: 400px;
                                     margin: 10px auto;
                                     padding: 16px;
                                     background: #F7F7F7;
                                 }
-                                .form-style-6 h1{
+                            
+                                .form-style-6 h1 {
                                     background: #1F3047;
                                     padding: 20px 0;
                                     font-size: 140%;
@@ -263,6 +268,7 @@ class plgSystemMooauthserver extends CMSPlugin
                                     color: #fff;
                                     margin: -16px -16px 16px -16px;
                                 }
+                            
                                 .form-style-6 input[type="text"],
                                 .form-style-6 input[type="email"],
                                 .form-style-6 textarea,
@@ -285,7 +291,7 @@ class plgSystemMooauthserver extends CMSPlugin
                                     box-shadow: 0 0 5px #4D79B3;
                                     border: 1px solid #1F3047;
                                 }
-
+                            
                                 .form-style-6 input[type="submit"],
                                 .form-style-6 input[type="button"] {
                                     width: 100%;
@@ -295,12 +301,13 @@ class plgSystemMooauthserver extends CMSPlugin
                                     border: none;
                                     cursor: pointer;
                                 }
-
+                            
                                 .form-style-6 input[type="submit"]:hover,
                                 .form-style-6 input[type="button"]:hover {
                                     background: #4D79B3;
                                 }
                             </style>
+
                             <?php
                             exit;
                         }

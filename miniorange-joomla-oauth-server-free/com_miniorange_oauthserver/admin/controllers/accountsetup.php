@@ -35,11 +35,11 @@ class miniorangeoauthserverControllerAccountSetup extends FormController
             $this->setRedirect('index.php?option=com_miniorange_oauthserver&view=accountsetup');
             return;
         }
-        $email          = $post['email'];
-        $plan           = $post['plan'];
-        $description    = $post['description'];
-        $customer       = new MoOauthServerCustomer();
 
+        $email          = isset($post['email']) ? trim(strip_tags($post['email'])) : '';
+        $plan           = isset($post['plan']) ? trim(strip_tags($post['plan'])) : '';
+        $description    = isset($post['description']) ? trim(strip_tags($post['description'])) : '';
+        $customer       = new MoOauthServerCustomer();
  
         $response = json_decode($customer->mo_oauth_request_for_demo($email, $plan, $description));
 
@@ -56,7 +56,7 @@ class miniorangeoauthserverControllerAccountSetup extends FormController
         $app = Factory::getApplication();
         $input = method_exists($app, 'getInput') ? $app->getInput() : $app->input;
         $post = $input->post->getArray();
-
+        $user = Factory::getUser();
         $client_id = miniorangeoauthserverControllerAccountSetup::generateRandomString(30);
         $client_secret= miniorangeoauthserverControllerAccountSetup::generateRandomString(30);
         $authorized_uri=trim($post['mo_oauth_client_redirect_url'], " ");
@@ -75,7 +75,7 @@ class miniorangeoauthserverControllerAccountSetup extends FormController
         );
 
         MoOAuthServerUtility::generic_update_query("#__miniorange_oauthserver_config", $fields, $conditions);
-        
+        MoOAuthServerUtility::plugin_efficiency_check($user->get('email'), $post['mo_oauth_custom_client_name'], $authorized_uri, "Added Client information");
         $this->setRedirect('index.php?option=com_miniorange_oauthserver&tab-panel=configuration&pa=2', Text::_('COM_MINIORANGE_OAUTHSERVER_CLIENT_ADDED_SUCCESSFULLY'));    
     }
     
@@ -136,24 +136,22 @@ class miniorangeoauthserverControllerAccountSetup extends FormController
     
     function moOAuthContactUs()
     {
-
         $app   = Factory::getApplication();
         $input = method_exists($app, 'getInput') ? $app->getInput() : $app->input;
         
         $post = $input->post->getArray();
-        
+
         $query_email=$post['query_email'];
         $query=$post['query'];
         
         if(MoOAuthServerUtility::check_empty_or_null($query_email) || MoOAuthServerUtility::check_empty_or_null($query) ) {
             $this->setRedirect('index.php?option=com_miniorange_oauthserver&view=accountsetup', Text::_('COM_MINIORANGE_OAUTHSERVER_QUERY_EMAIL_ERROR'), 'error');
             return;
-        } else{
-            
+        } 
+        else
+        {
             if(isset($post['mo_oauthserver_select_plan'])) {
-                
                 $query = " <br> [mo_oauthserver_select_plan]:  ".$post['mo_oauthserver_select_plan']." <br> [number_of_users]:  ".$post['number_of_users']." <br> [Query]: ".$post['query'];
-                
             }
             
             $phone =  $post['country_code'] . ' ' . $post['query_phone'];

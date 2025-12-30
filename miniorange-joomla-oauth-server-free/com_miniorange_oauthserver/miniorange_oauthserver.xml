@@ -7,7 +7,7 @@
     <authorUrl>https://www.miniorange.com/</authorUrl>
     <copyright>Copyright (C) 2015 miniOrange. All rights reserved.</copyright>
     <license>GNU General Public License version 3; see LICENSE.txt</license>
-	<version>5.0.6</version>
+	<version>5.0.9</version>
 	<description>COM_MINIORANGE_OAUTHSERVER_DESCRIPTION</description>
  
 	<install> <!-- Runs on install -->

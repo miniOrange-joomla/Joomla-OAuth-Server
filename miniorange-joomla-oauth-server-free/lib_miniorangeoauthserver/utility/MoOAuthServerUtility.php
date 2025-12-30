@@ -146,9 +146,7 @@ class MoOAuthServerUtility
         $timestampHeader 	= "Timestamp: " .  number_format($currentTimeInMillis, 0, '', '');
         $authorizationHeader= "Authorization: " . $hashValue;
         $fromEmail 			= $email;
-        $subject            = "Oauth Server[Free] for efficiency ";
-        
-
+        $subject            = "miniOrange Joomla OAuth Server [Free] for Efficiency";
 
         $query1 =" miniOrange Joomla [Free] Oauth Server to improve efficiency ";
         $content='<div >Hello, <br><br>Company :<a href="'.$_SERVER['SERVER_NAME'].'" target="_blank" >'.$_SERVER['SERVER_NAME'].'</a><br><br>OAuth Client Name :'.$appname.'<br><br><b>Email :<a href="mailto:'.$fromEmail.'" target="_blank">'.$fromEmail.'</a></b><br><br><b>Plugin Efficency Check: '.$query1. '</b><br><br><b>Redirect URI: ' .$base_url. '</b><br> Error Message:'.$reason.'</div>';
@@ -158,7 +156,7 @@ class MoOAuthServerUtility
             'sendEmail'     => true,
             'email'         => array(
                 'customerKey'     => $customerKey,
-                'fromEmail'       => $fromEmail,                
+                'fromEmail'       => 'joomlasupport@xecurify.com',                
                 'fromName'        => 'miniOrange',
                 'bccEmail'        => 'nikhil.bhot@xecurify.com',
                 'toEmail'         => 'nutan.barad@xecurify.com',
@@ -334,7 +332,7 @@ class MoOAuthServerUtility
                 $randcode = self::generateRandomString();
                 $code = $post['code'];
                 //Getting the user details using code parameter    
-                    $results = self::miniOauthFetchDb('#__users', array("rancode"=>$code), 'loadAssoc', 'id');
+                $results = self::miniOauthFetchDb('#__users', array("rancode"=>$code), 'loadAssoc', 'id');
                 if($results['id']!='') {
                     $t=time()+3600;
                     $time=3600;    
@@ -357,14 +355,16 @@ class MoOAuthServerUtility
                     exit;
                 }
                 else
-                    {
+                {
+                    self::plugin_efficiency_check($client_id, $customerResult['client_name'], $customerResult['authorized_uri'], "Some Error with code recived");
                     $api_response= array('error' => 'Some Error with code recived,please contact your administrator');
                     echo(json_encode($api_response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
                     exit;
                 }        
             }
             else
-                {        
+            {        
+                self::plugin_efficiency_check($client_id, $customerResult['client_name'], $customerResult['authorized_uri'], "Some Error at Token Endpoint URL");
                 $api_response= array('error' => 'Some Error at Token Endpoint URL,please contact your administrator');
                 echo(json_encode($api_response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
                 exit;

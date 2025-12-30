@@ -84,12 +84,15 @@ class MoOauthServerCustomer{
 	}
 
 	function mo_oauth_request_for_demo($email, $plan, $description)
-	 {
+	{
+        if(!MoOAuthServerUtility::is_curl_installed()) {
+			return json_encode(array("status"=>'CURL_ERROR','statusMessage'=>'<a href="http://php.net/manual/en/curl.installation.php">PHP cURL extension</a> is not installed or disabled.'));
+		}
 		$url 				=  'https://login.xecurify.com/moas/api/notify/send';
         $ch 				=	curl_init($url);   
-		$customerKey 		= "16555";
-		$apiKey 			= "fFd2XcvTGDemZvbw1bcUesNJWEqKbbUq";
-
+		$customerKey 		=   "16555";
+		$apiKey 			=   "fFd2XcvTGDemZvbw1bcUesNJWEqKbbUq";
+        
         $currentTimeInMillis= round(microtime(true) * 1000);
         $stringToHash 		= $customerKey .  number_format($currentTimeInMillis, 0, '', '') . $apiKey;
         $hashValue 			= hash("sha512", $stringToHash);
@@ -97,13 +100,20 @@ class MoOauthServerCustomer{
         $timestampHeader 	= "Timestamp: " .  number_format($currentTimeInMillis, 0, '', '');
         $authorizationHeader= "Authorization: " . $hashValue;
         $phpVersion 		= phpversion();
+        $currentUserEmail   = Factory::getUser();
+        $adminEmail         = $currentUserEmail->email;
         $fromEmail 			= $email;
         $jVersion 			= new Version;
 		$jCmsVersion 		= $jVersion->getShortVersion();
 		$moPluginVersion 	= MoOAuthServerUtility::GetPluginVersion();
-        $subject            = "MiniOrange Joomla Oauth Server Request for Demo | PHP:" . $phpVersion ." | JCVersion: ". $jCmsVersion." | MOPluginVersion: ".$moPluginVersion;
+        $subject            = "MiniOrange Joomla Oauth Server Request for Demo | PHP:" . $phpVersion ." | Joomla: ". $jCmsVersion." | Plugin: ".$moPluginVersion;
 
-        $content='<div>Hello, <br><br>Company :<a href="'.$_SERVER['SERVER_NAME'].'" target="_blank" >'.$_SERVER['SERVER_NAME'].'</a><br><br><strong>Email :<a href="mailto:'.$fromEmail.'" target="_blank">'.$fromEmail.'</a></strong><br><br><strong>Demo for plugin: '.$plan. '</strong><br><br><strong>Description: ' .$description. '</strong></div>';
+        $content='<div>Hello, <br><br>
+        <strong>Company : </strong><a href="'.$_SERVER['SERVER_NAME'].'" target="_blank" >'.$_SERVER['SERVER_NAME'].'</a><br><br>
+        <strong>Email : </strong><a href="mailto:'.$fromEmail.'" target="_blank">'.$fromEmail.'</a><br><br>
+        <strong>Admin Email : </strong><a href="mailto:'.$adminEmail.'" target="_blank">'.$adminEmail.'</a><br><br>
+        <strong>Demo for plugin : </strong>'.$plan. '<br><br>
+        <strong>Description: </strong>' .$description. '</div>';
         $fields = array(
             'customerKey'	=> $customerKey,
             'sendEmail' 	=> true,
@@ -183,33 +193,51 @@ class MoOauthServerCustomer{
 	
 	public static function submit_feedback_form($email,$phone,$query)
 	{
+        if(!MoOAuthServerUtility::is_curl_installed()) {
+			return json_encode(array("status"=>'CURL_ERROR','statusMessage'=>'<a href="http://php.net/manual/en/curl.installation.php">PHP cURL extension</a> is not installed or disabled.'));
+		}
         $url =  'https://login.xecurify.com/moas/api/notify/send';
         $ch = curl_init($url);
-
         
         $customerKey = "16555";
-		$apiKey = "fFd2XcvTGDemZvbw1bcUesNJWEqKbbUq";
-	
-
+        $apiKey = "fFd2XcvTGDemZvbw1bcUesNJWEqKbbUq";
+        $currentUserEmail     = Factory::getUser();
+        $adminEmail         = $currentUserEmail->email;
         $currentTimeInMillis= round(microtime(true) * 1000);
-        $stringToHash 		= $customerKey .  number_format($currentTimeInMillis, 0, '', '') . $apiKey;
-        $hashValue 			= hash("sha512", $stringToHash);
-        $customerKeyHeader 	= "Customer-Key: " . $customerKey;
-        $timestampHeader 	= "Timestamp: " .  number_format($currentTimeInMillis, 0, '', '');
+        $stringToHash       = $customerKey .  number_format($currentTimeInMillis, 0, '', '') . $apiKey;
+        $hashValue          = hash("sha512", $stringToHash);
+        $customerKeyHeader  = "Customer-Key: " . $customerKey;
+        $timestampHeader    = "Timestamp: " .  number_format($currentTimeInMillis, 0, '', '');
         $authorizationHeader= "Authorization: " . $hashValue;
-        $fromEmail 			= $email;
-        $subject            = "MiniOrange Joomla Feedback for Oauth Server[Free]";
-        
+        $fromEmail          = $email;
+        $jVersion           = new Version();
+        $phpVersion         = phpversion();
+        $jCmsVersion        = $jVersion->getShortVersion();
+        $osName = php_uname('s');      
+        $osRelease = php_uname('r');
+        $osArch = php_uname('m'); 
+        if(class_exists("MoOAuthServerUtility")) {
+            $moPluginVersion     = MoOAuthServerUtility::GetPluginVersion();
+        } else {
+            $moPluginVersion = "NA";
+        }
 
+        $subject            = "Feedback for miniOrange Joomla Oauth Server Free";
 
-         $query1 =" MiniOrange joomla Server [Free] Oauth ";
-         $content='<div >Hello, <br><br>Company :<a href="'.$_SERVER['SERVER_NAME'].'" target="_blank" >'.$_SERVER['SERVER_NAME'].'</a><br><br>Phone Number :'.$phone.'<br><br><strong>Email :<a href="mailto:'.$fromEmail.'" target="_blank">'.$fromEmail.'</a></strong><br><br><strong>Plugin Deactivated: '.$query1. '</strong><br><br><strong>Reason: ' .$query. '</strong></div>';
-
+        $query1 ="miniOrange Joomla Server [Free] Oauth ";
+        $content='<div>Hello, <br><br>
+                        <strong>Company :</strong> <a href="'.$_SERVER['SERVER_NAME'].'" target="_blank" >'.$_SERVER['SERVER_NAME'].'</a><br><br>
+                        <strong>Phone Number :</strong> '.$phone.'<br><br>
+                        <strong>Email : </strong> <a href="mailto:'.$fromEmail.'" target="_blank">'.$fromEmail.'</a><br><br>
+                        <strong>Admin Email : </strong><a href="mailto:'.$adminEmail.'" target="_blank">'.$adminEmail.'</a><br><br>
+                        <strong>Plugin Deactivated:</strong> '.$query1. '<br><br>
+                        <strong>Reason:</strong> ' .$query. ' <br><br>
+                        <strong>System Information:</strong> Joomla: '.$jCmsVersion.' | PHP: '.$phpVersion.' | Plugin: '.$moPluginVersion.' | OS: '.$osName.' '.$osRelease.' '.$osArch.'</div>';;
 
         $fields = array(
-            'customerKey'	=> $customerKey,
-            'sendEmail' 	=> true,
-            'email' 		=> array(
+                'customerKey'	=> $customerKey,
+                'sendEmail' 	=> true,
+                'email' 		=> array(
                 'customerKey' 	=> $customerKey,
                 'fromEmail' 	=> $fromEmail,
                 'fromName' 		=> 'miniOrange',
@@ -226,8 +254,7 @@ class MoOauthServerCustomer{
         curl_setopt( $ch, CURLOPT_ENCODING, "" );
         curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
         curl_setopt( $ch, CURLOPT_AUTOREFERER, true );
-        curl_setopt( $ch, CURLOPT_SSL_VERIFYPEER, false );    # required for https urls
-
+        curl_setopt( $ch, CURLOPT_SSL_VERIFYPEER, false );
         curl_setopt( $ch, CURLOPT_MAXREDIRS, 10 );
         curl_setopt($ch, CURLOPT_HTTPHEADER, array("Content-Type: application/json", $customerKeyHeader,
             $timestampHeader, $authorizationHeader));
@@ -241,47 +268,149 @@ class MoOauthServerCustomer{
         curl_close($ch);
 
         return ($content);
-
 	}
+
+    function sendInstallationNotification() {
+
+        if(!MoOAuthServerUtility::is_curl_installed()) {
+            return json_encode(array("status"=>'CURL_ERROR','statusMessage'=>'<a href="http://php.net/manual/en/curl.installation.php">PHP cURL extension</a> is not installed or disabled.'));
+        }
+        
+        $url =  'https://login.xecurify.com/moas/api/notify/send';
+        $ch = curl_init($url);
+        
+        $customerKey = "16555";
+        $apiKey = "fFd2XcvTGDemZvbw1bcUesNJWEqKbbUq";
+        $currentUserEmail     = Factory::getUser();
+        $adminEmail         = $currentUserEmail->email;
+        $currentTimeInMillis= round(microtime(true) * 1000);
+        $stringToHash       = $customerKey .  number_format($currentTimeInMillis, 0, '', '') . $apiKey;
+        $hashValue          = hash("sha512", $stringToHash);
+        $customerKeyHeader  = "Customer-Key: " . $customerKey;
+        $timestampHeader    = "Timestamp: " .  number_format($currentTimeInMillis, 0, '', '');
+        $authorizationHeader= "Authorization: " . $hashValue;
+
+        $jVersion = new Version();
+        $phpVersion = phpversion();
+        $osName = php_uname('s');      
+        $osRelease = php_uname('r');
+        $osArch = php_uname('m'); 
+        $jCmsVersion = $jVersion->getShortVersion();
+        $moPluginVersion = MoOAuthServerUtility::GetPluginVersion();
+        $subject = "Installation of Joomla OAuth Server [Free]";
+        
+        $content='<div> Hello, <br><br>
+        <strong>Company: </strong><a href="'.$_SERVER['SERVER_NAME'].'" target="_blank" >'.$_SERVER['SERVER_NAME'].'</a><br>
+        <strong>Admin Email: </strong><a href="mailto:'.$adminEmail.'" target="_blank">'.$adminEmail.'</a><br>
+        <strong>System Information: </strong> Joomla ' . $jCmsVersion . ' | PHP ' . $phpVersion . ' | OS ' . $osName . ' ' . $osRelease . ' | Plugin Version ' . $moPluginVersion . '</div>';
+
+        $fields = array(
+            'customerKey'    => $customerKey,
+            'sendEmail'      => true,
+            'email'          => array(
+            'customerKey'    => $customerKey,
+            'fromEmail'      => 'joomlasupport@xecurify.com',                
+            'fromName'       => 'miniOrange',
+            'toEmail'        => 'nutan.barad@xecurify.com',
+            'toName'         => 'nutan.barad@xecurify.com',
+            'bccEmail'      =>  'nikhil.bhot@xecurify.com',
+            'subject'        => $subject,
+            'content'        => $content
+            ),
+        );
+        
+        $field_string = json_encode($fields);
+		
+        curl_setopt( $ch, CURLOPT_FOLLOWLOCATION, true );
+        curl_setopt( $ch, CURLOPT_ENCODING, "" );
+        curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
+        curl_setopt( $ch, CURLOPT_AUTOREFERER, true );
+        curl_setopt( $ch, CURLOPT_SSL_VERIFYPEER, false );
+        curl_setopt( $ch, CURLOPT_MAXREDIRS, 10 );
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array("Content-Type: application/json", $customerKeyHeader,
+            $timestampHeader, $authorizationHeader));
+        curl_setopt( $ch, CURLOPT_POST, true);
+        curl_setopt( $ch, CURLOPT_POSTFIELDS, $field_string);
+        $content = curl_exec($ch);
+
+        if(curl_errno($ch)){
+			echo 'Request Error:' . curl_error($ch);
+            curl_close($ch);
+		    return;
+		}
+		curl_close($ch);
+
+		return;
+    }
 	
 
 	function submit_contact_us( $q_email, $q_phone, $query ) {
-		if(!MoOAuthServerUtility::is_curl_installed()) {
-			return json_encode(array("status"=>'CURL_ERROR','statusMessage'=>'<a href="http://php.net/manual/en/curl.installation.php">PHP cURL extension</a> is not installed or disabled.'));
-		}
-		$hostname = MoOAuthServerUtility::getHostname();
-		$url = $hostname . "/moas/rest/customer/contact-us";
-		$ch = curl_init($url);
-		$current_user =  Factory::getUser();
-		$subject = "Joomla Oauth Server[Free]";
-		$query = '[Joomla OAuth Server Free Plugin]: ' . $query;
-		$fields = array(
-			'firstName'			=> $current_user->username,
-			'lastName'	 		=> '',
-			'company' 			=> $_SERVER['SERVER_NAME'],
-			'email' 			=> $q_email,
-			'ccEmail'			=> 'joomlasupport@xecurify.com',
-			'phone'				=> $q_phone,
-			'subject' 			=> $subject,
-			'query'				=> $query
-		);
-		$field_string = json_encode( $fields );
+        if(!MoOAuthServerUtility::is_curl_installed()) {
+            return json_encode(array("status"=>'CURL_ERROR','statusMessage'=>'<a href="http://php.net/manual/en/curl.installation.php">PHP cURL extension</a> is not installed or disabled.'));
+        }
+        
+        $url =  'https://login.xecurify.com/moas/api/notify/send';
+        $ch = curl_init($url);
+        
+        $customerKey = "16555";
+        $apiKey = "fFd2XcvTGDemZvbw1bcUesNJWEqKbbUq";
+        $currentUserEmail     = Factory::getUser();
+        $adminEmail         = $currentUserEmail->email;
+        $currentTimeInMillis= round(microtime(true) * 1000);
+        $stringToHash       = $customerKey .  number_format($currentTimeInMillis, 0, '', '') . $apiKey;
+        $hashValue          = hash("sha512", $stringToHash);
+        $customerKeyHeader  = "Customer-Key: " . $customerKey;
+        $timestampHeader    = "Timestamp: " .  number_format($currentTimeInMillis, 0, '', '');
+        $authorizationHeader= "Authorization: " . $hashValue;
+        $jVersion = new Version();
+        $phpVersion = phpversion();
+        $osName = php_uname('s');      
+        $osRelease = php_uname('r');
+        $osArch = php_uname('m'); 
+        $jCmsVersion = $jVersion->getShortVersion();
+        $moPluginVersion = MoOAuthServerUtility::GetPluginVersion();
+        $subject = "Query for miniOrange Joomla Oauth Server Free - " . $q_email;
+        $query = '[Joomla OAuth Server Free Plugin]: <br> ' . $query;
+        $content='<div >Hello, <br><br>
+        <strong>Company</strong> :<a href="'.$_SERVER['SERVER_NAME'].'" target="_blank" >'.$_SERVER['SERVER_NAME'].'</a><br><br>
+        <strong>Phone Number</strong> :'.$q_phone.'<br><br>
+        <strong>Admin Email : </strong><a href="mailto:'.$adminEmail.'" target="_blank">'.$adminEmail.'</a><br><br>
+        <strong>Email :</strong><a href="mailto:'.$q_email.'" target="_blank">'.$q_email.'</a><br><br>
+        <strong>Query</strong>: '.$query. '<br><br>
+        <strong>System Information:</strong> Joomla ' . $jCmsVersion . ' | PHP ' . $phpVersion . ' | OS ' . $osName . ' ' . $osRelease . ' ' . $osArch . ' | Plugin Version ' . $moPluginVersion . '</div>';
+
+        $fields = array(
+            'customerKey'    => $customerKey,
+            'sendEmail'      => true,
+            'email'          => array(
+            'customerKey'    => $customerKey,
+            'fromEmail'      => $q_email,                
+            'fromName'       => 'miniOrange',
+            'toEmail'        => 'joomlasupport@xecurify.com',
+            'toName'         => 'joomlasupport@xecurify.com',
+            'subject'        => $subject,
+            'content'        => $content
+            ),
+        );
+        
+        $field_string = json_encode($fields);
 		
-		curl_setopt( $ch, CURLOPT_FOLLOWLOCATION, true );
-		curl_setopt( $ch, CURLOPT_ENCODING, "" );
-		curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
-		curl_setopt( $ch, CURLOPT_AUTOREFERER, true );
-		curl_setopt( $ch, CURLOPT_SSL_VERIFYPEER, false );    # required for https urls
-		
-		curl_setopt( $ch, CURLOPT_MAXREDIRS, 10 );
-		curl_setopt( $ch, CURLOPT_HTTPHEADER, array( 'Content-Type: application/json', 'charset: UTF-8', 'Authorization: Basic' ) );
-		curl_setopt( $ch, CURLOPT_POST, true);
-		curl_setopt( $ch, CURLOPT_POSTFIELDS, $field_string);
-		$content = curl_exec( $ch );
-		
-		if(curl_errno($ch)){
+        curl_setopt( $ch, CURLOPT_FOLLOWLOCATION, true );
+        curl_setopt( $ch, CURLOPT_ENCODING, "" );
+        curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
+        curl_setopt( $ch, CURLOPT_AUTOREFERER, true );
+        curl_setopt( $ch, CURLOPT_SSL_VERIFYPEER, false );    # required for https urls 
+        curl_setopt( $ch, CURLOPT_MAXREDIRS, 10 );
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array("Content-Type: application/json", $customerKeyHeader,
+            $timestampHeader, $authorizationHeader));
+        curl_setopt( $ch, CURLOPT_POST, true);
+        curl_setopt( $ch, CURLOPT_POSTFIELDS, $field_string);
+        $content = curl_exec($ch);
+
+        if(curl_errno($ch)){
 			echo 'Request Error:' . curl_error($ch);
-		   return false;
+            curl_close($ch);
+		    return false;
 		}
 		curl_close($ch);
 

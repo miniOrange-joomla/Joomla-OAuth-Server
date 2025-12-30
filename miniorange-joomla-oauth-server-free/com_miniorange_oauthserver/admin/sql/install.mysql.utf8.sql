@@ -26,10 +26,8 @@ CREATE TABLE IF NOT EXISTS `#__miniorange_oauthserver_config` (
 `authorized_uri` varchar(255) NOT NULL,
 `client_count` varchar(255) NOT NULL,
 `token_length` int(3) default 64,
-
-
- PRIMARY KEY (`id`)
-  ) DEFAULT COLLATE=utf8_general_ci;
+PRIMARY KEY (`id`)
+) DEFAULT COLLATE=utf8_general_ci;
 
 ALTER TABLE `#__users` ADD COLUMN `rancode` varchar(255) DEFAULT 0;
 ALTER TABLE `#__users` ADD COLUMN `client_token` varchar(255) DEFAULT 0;
