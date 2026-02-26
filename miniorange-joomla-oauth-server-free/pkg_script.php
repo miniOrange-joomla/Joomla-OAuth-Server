@@ -63,7 +63,6 @@ class pkg_OAUTHSERVERInstallerScript
      */
     public function preflight($type, $parent) 
     {
-  '</p>';
     }
 
     /**
@@ -85,10 +84,11 @@ class pkg_OAUTHSERVERInstallerScript
         }
 
         $helperPath = JPATH_ADMINISTRATOR . '/components/com_miniorange_oauthserver/helpers/mo_customer_setup.php';
+        
         if (file_exists($helperPath)) {
             require_once $helperPath;
             
-            if (class_exists('MoCustomerSetupHelper')) {
+            if (class_exists('MoOauthServerCustomer')) {
                 MoOauthServerCustomer::sendInstallationNotification(); 
             }
         }
@@ -100,38 +100,59 @@ class pkg_OAUTHSERVERInstallerScript
     protected function showInstallMessage($messages=array()) {
         ?>
         <style>
-	        .mo-column-2 {
-	        	width: 19%;
-	        	margin-right: 1%;
-	        	float: left;
-	        }
-        
-	        .mo-column-10 {
-	        	width: 80%;
-	        	float: left;
-	        }
+            .mo-row{
+                width: 100%;
+                display: block;
+                margin-bottom: 2%;
+            }
+            .mo-row:after{
+                clear: both;
+                display: block;
+                content: "";
+            }
+            .mo-button-style {
+                background-color: #007DB0;
+                color: #ffffff;
+                border: 1px solid #007DB0;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-size: 14px;
+                cursor: pointer;
+                display: inline-block;
+                text-decoration: none;
+            }
+
+            .mo-button-style:hover,
+            .mo-button-style:focus {
+                background-color: #00597D;
+                border-color: #00597D;
+                color: #ffffff;
+                text-decoration: none;
+            }
         </style>
         <div>
+            <h2>miniOrange Joomla OAuth Server Free Plugin</h2>
+            <hr>
             <p>
-                <h2>miniOrange Joomla OAuth Server Free Plugin</h2>
-                <hr>
-                <p>
-                    <strong>
-                        Joomla OAuth Server plugin allows you to perform Single Sign-On with any OAuth 2.0 compliant client application . 
-                        It enables users to authenticate into your client application using their Joomla credentials, allowing Joomla to 
-                        act as an OAuth Provider. You can also access all OAuth APIs using the Joomla OAuth Server SSO plugin.
-                    </strong>
-                    <h4>Steps to use the OAuth Server plugin.</h4>
-                    <ul>
-                        <li>Click on <b>Components</b></li>
-                        <li>Click on <b>miniOrange OAuth Server</b> and select <b>Configure OAuth</b> tab</li>
-                        <li>You can start configuring.</li>
-                    </ul>
-                </p>
+                <strong>
+                    Joomla OAuth Server plugin allows you to perform Single Sign-On with any OAuth 2.0 compliant client application . 
+                    It enables users to authenticate into your client application using their Joomla credentials, allowing Joomla to 
+                    act as an OAuth Provider. You can also access all OAuth APIs using the Joomla OAuth Server SSO plugin.
+                </strong>
+                <h4>Steps to use the OAuth Server plugin.</h4>
+                <ul>
+                    <li>Click on <b>Components</b></li>
+                    <li>Click on <b>miniOrange OAuth Server</b> and select <b>Configure OAuth</b> tab</li>
+                    <li>You can start configuring.</li>
+                </ul>
             </p>
-            <a class="btn btn-secondary" style="background-color: #001b4c; color : white"  href="index.php?option=com_miniorange_oauthserver&view=accountsetup&tab-panel=configuration">Start Using miniOrange OAuth Server plugin</a>
-            <a class="btn btn-secondary" style="background-color: #001b4c; color : white" href="https://plugins.miniorange.com/joomla-sso-ldap-mfa-solutions?section=oauth-server" target="_blank">Setup guides</a>
-		    <a class="btn btn-secondary" style="background-color: #001b4c; color : white" href="https://www.miniorange.com/contact" target="_blank">Free Trial / Need assistance</a>
+
+            <div class="mo-row">
+                <a class="mo-button-style"  href="index.php?option=com_miniorange_oauthserver&view=accountsetup&tab-panel=configuration">Start Using miniOrange OAuth Server plugin</a>
+                <a class="mo-button-style"  href="https://plugins.miniorange.com/joomla-sso-ldap-mfa-solutions?section=oauth-server" target="_blank">Setup guides</a>
+		        <a class="mo-button-style"  href="https://www.miniorange.com/contact" target="_blank">Free Trial / Need assistance</a>
+            </div>
+            
         </div>
         <?php
     }

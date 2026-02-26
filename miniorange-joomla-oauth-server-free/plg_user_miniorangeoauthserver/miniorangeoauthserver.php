@@ -20,8 +20,6 @@ if(!defined('DS')) { define('DS', DIRECTORY_SEPARATOR);
 
 class plgUserMiniorangeoauthserver extends CMSPlugin
 {
-
- 
     /**
      * This method should handle any authentication and report back to the subject
      *
@@ -45,7 +43,13 @@ class plgUserMiniorangeoauthserver extends CMSPlugin
             
             $randcode = $this->generateRandomString();
             
-            $db = Factory::getDbo();
+            if (method_exists($app, 'getDatabase')) {
+                $db =  $app->getDatabase(); // J4+
+            }
+            else{
+                $db = Factory::getDbo(); 
+            }
+
             $query = $db->getQuery(true);
             // Fields to update.
             $fields = array(
@@ -247,7 +251,7 @@ class plgUserMiniorangeoauthserver extends CMSPlugin
                         }
                     }
                 );
-                    </script>';
-                    exit;
+            </script>';
+            exit;
     }    
 }

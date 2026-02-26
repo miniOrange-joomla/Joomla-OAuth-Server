@@ -50,13 +50,12 @@ class miniorangeoauthserverControllerAccountSetup extends FormController
         }
     }
     
-    
     function addclient()
     {
         $app = Factory::getApplication();
         $input = method_exists($app, 'getInput') ? $app->getInput() : $app->input;
         $post = $input->post->getArray();
-        $user = Factory::getUser();
+        $user = method_exists($app, 'getIdentity') ? $app->getIdentity() : Factory::getUser();
         $client_id = miniorangeoauthserverControllerAccountSetup::generateRandomString(30);
         $client_secret= miniorangeoauthserverControllerAccountSetup::generateRandomString(30);
         $authorized_uri=trim($post['mo_oauth_client_redirect_url'], " ");

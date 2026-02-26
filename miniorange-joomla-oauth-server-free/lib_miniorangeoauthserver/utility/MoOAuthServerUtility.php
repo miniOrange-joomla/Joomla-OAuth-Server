@@ -1,4 +1,6 @@
 <?php
+
+use Joomla\CMS\User\User;
 /**
 * @author      miniOrange Security Software Pvt. Ltd.
 * @copyright   Copyright (C) 2015 miniOrange (https://www.miniorange.com)
@@ -16,10 +18,9 @@ use Joomla\CMS\Session\Session;
 use Joomla\CMS\HTML\HTMLHelper;
 class MoOAuthServerUtility
 {
-  
 	public static function is_customer_registered() 
 	{
-		$db = Factory::getDbo();
+		$db = self::getDBObject();
 		$query = $db->getQuery(true);
 		$query->select('*');
 		$query->from($db->quoteName('#__miniorange_oauthserver_customer'));
@@ -27,7 +28,6 @@ class MoOAuthServerUtility
  
 		$db->setQuery($query);
 		$result = $db->loadAssoc();
-		
 		$email 			= $result['email'];
 		$customerKey 	= $result['customer_key'];
 		$status = $result['registration_status'];
@@ -41,7 +41,7 @@ class MoOAuthServerUtility
 	
 	public static function GetPluginVersion()
 	{
-		$db = Factory::getDbo();
+		$db = self::getDBObject();
 		$dbQuery = $db->getQuery(true)
 		->select('manifest_cache')
 		->from($db->quoteName('#__extensions'))
@@ -53,7 +53,7 @@ class MoOAuthServerUtility
 
 	public static function generic_update_query($database_name, $updatefieldsarray , $condition = TRUE)
 	{
-        $db = Factory::getDbo();
+        $db = self::getDBObject();
         $query = $db->getQuery(true);
         foreach ($updatefieldsarray as $key => $value)
           $database_fileds[] = $db->quoteName($key) . ' = ' . $db->quote($value);
@@ -86,7 +86,7 @@ class MoOAuthServerUtility
 	}
 	
 	public static function getCustomerDetails(){
-		$db = Factory::getDbo();
+		$db = self::getDBObject();
 		$query = $db->getQuery(true);
 		$query->select('*');
 		$query->from($db->quoteName('#__miniorange_oauthserver_customer'));
@@ -99,7 +99,7 @@ class MoOAuthServerUtility
 
 	static function  miniOauthFetchDb($tableName,$condition=TRUE,$method='loadAssoc',$columns='*'){
 
-		$db = Factory::getDbo();
+		$db = self::getDBObject();
 		$query = $db->getQuery(true);
 		$columns = is_array($columns)?$db->quoteName($columns):$columns;
 		$query->select($columns);
@@ -134,11 +134,8 @@ class MoOAuthServerUtility
         $url =  'https://login.xecurify.com/moas/api/notify/send';
         $ch = curl_init($url);
 
-        
         $customerKey = "16555";
 		$apiKey = "fFd2XcvTGDemZvbw1bcUesNJWEqKbbUq";
-	
-
         $currentTimeInMillis= round(microtime(true) * 1000);
         $stringToHash 		= $customerKey .  number_format($currentTimeInMillis, 0, '', '') . $apiKey;
         $hashValue 			= hash("sha512", $stringToHash);
@@ -173,23 +170,22 @@ class MoOAuthServerUtility
         curl_setopt( $ch, CURLOPT_SSL_VERIFYPEER, false );    # required for https urls
 
         curl_setopt( $ch, CURLOPT_MAXREDIRS, 10 );
-        curl_setopt($ch, CURLOPT_HTTPHEADER, array("Content-Type: application/json", $customerKeyHeader,
-            $timestampHeader, $authorizationHeader));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array("Content-Type: application/json", $customerKeyHeader, $timestampHeader, $authorizationHeader));
         curl_setopt( $ch, CURLOPT_POST, true);
         curl_setopt( $ch, CURLOPT_POSTFIELDS, $field_string);
         $content = curl_exec($ch);
         	
         if(curl_errno($ch)){
-			
-            return;
+            curl_close($ch);
+            return json_encode(array("status"=>'Error','message'=>'Request Error:' . curl_error($ch)));
         }
         curl_close($ch);
-        return;
+        return json_encode(array('status' => 'success'));
 	}
 
 	public static function exportData($tableNames)
     {
-        $db = Factory::getDbo();
+        $db = self::getDBObject();
         $jsonData = [];
 
         if (empty($tableNames)) {
@@ -231,8 +227,8 @@ class MoOAuthServerUtility
         
         if(isset($get['client_id']) && !isset($get['client_secret'])) {   
             if(isset($customerResult['client_id']) && $customerResult['client_id']===$get['client_id'] && isset($customerResult['authorized_uri']) && $customerResult['authorized_uri']===$get['redirect_uri']) {
-                $session = Factory::getSession(); // Get current session vars
-                $user = Factory::getUser();        // Get the user object
+                $session = self::getSession(); // Get current session vars
+                $user = self::getUser();        // Get the user object
                 $app  = Factory::getApplication(); // Get the application
                 $client_id = $get['client_id'];
                 $scope = $get['scope'];
@@ -241,7 +237,7 @@ class MoOAuthServerUtility
                 $state = $get['state'];
                
                 if($user->id!='') {
-                    $user = Factory::getUser();
+                    $user = self::getUser();
                     $isroot = $user->authorise('core.admin');
                     $customerResult = self::miniOauthFetchDb('#__users', array("id"=>$user->id), 'loadAssoc', '*');
                     if($isroot) {
@@ -249,10 +245,10 @@ class MoOAuthServerUtility
                         $randcode = self::generateRandomString();        
                         $user_id = $user->id;        
                         $fields = array(
-                        'rancode' =>$randcode
+                            'rancode' =>$randcode
                         );
                         $conditions = array(
-                        'id' => $user_id
+                            'id' => $user_id
                         );
                         self::generic_update_query('#__users', $fields, $conditions);
                     
@@ -269,7 +265,7 @@ class MoOAuthServerUtility
                     }
                     else
                     {
-                        $session = Factory::getApplication()->getSession();
+                        $session = self::getSession();
                         $session->destroy();
        
                     }        
@@ -393,7 +389,7 @@ class MoOAuthServerUtility
             $access_token =$access_token[1];
         }
 
-        $db = Factory::getDbo();
+        $db = self::getDBObject();
         $query = $db->getQuery(true);
         $query->select($db->quoteName(array('id','time_stamp')));
         $query->from($db->quoteName('#__users'));
@@ -432,17 +428,17 @@ class MoOAuthServerUtility
             $results = $db->loadAssoc();
             if(empty(trim($results['email']))) {
                 $api_response = array(        
-                'id'  => $results['id'],
-                'username' => $results['username'],
-                'email' => $results['email']
+                    'id'  => $results['id'],
+                    'username' => $results['username'],
+                    'email' => $results['email']
                 );
             }
             else
             {    
                 $api_response = array(            
-                'id'  => $results['id'],
-                'username' => $results['email'],
-                'email' => $results['email']
+                    'id'  => $results['id'],
+                    'username' => $results['email'],
+                    'email' => $results['email']
                 );
             }
             header("Content-Type: application/json");
@@ -649,6 +645,38 @@ class MoOAuthServerUtility
                 );
                     </script>';
                     exit;
-    }    
+    }
+    
+    public static function getDBObject()
+    {
+        $app = Factory::getApplication();
+        if (method_exists($app, 'getDatabase')) {
+            return $app->getDatabase(); // J4+
+        }
+
+        return Factory::getDbo(); 
+    }
+
+    public static function getSession()
+    {
+        $app = Factory::getApplication();
+
+        if (method_exists($app, 'getSession')) {
+            return $app->getSession();
+        }
+
+        return Factory::getSession();
+    }
+
+    public static function getUser($userId = null)
+    {
+        $app = Factory::getApplication();
+
+        if (method_exists($app, 'getIdentity')) {
+            return $userId !== null ? $app->getIdentity($userId) : $app->getIdentity();
+        }
+
+        return $userId !== null ? User::getInstance($userId) : Factory::getUser();
+    }
 }
 ?>

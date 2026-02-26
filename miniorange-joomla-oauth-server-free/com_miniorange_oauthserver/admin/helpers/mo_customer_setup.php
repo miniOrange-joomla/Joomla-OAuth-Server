@@ -20,74 +20,13 @@ class MoOauthServerCustomer{
 	public $customerKey;
 	public $transactionId;
 
-	/*
-	** Initial values are hardcoded to support the miniOrange framework to generate OTP for email.
-	** We need the default value for creating the OTP the first time,
-	** As we don't have the Default keys available before registering the user to our server.
-	** This default values are only required for sending an One Time Passcode at the user provided email address.
-	*/
-	
-	//auth
-	private $defaultCustomerKey = "16555";
-	private $defaultApiKey = "fFd2XcvTGDemZvbw1bcUesNJWEqKbbUq";
-	
-	function create_customer(){
-		if(!MoOAuthServerUtility::is_curl_installed()) {
-			return json_encode(array("statusCode"=>'ERROR','statusMessage'=>$error . '. Please check your configuration. Also check troubleshooting under otp configuration.'));
-		}
-		$hostname = MoOAuthServerUtility::getHostname();
-		
-		$url = $hostname . '/moas/rest/customer/add';
-		$ch = curl_init($url);
-		$current_user =  Factory::getUser();
-		$customer_details = MoOAuthServerUtility::getCustomerDetails();
-		
-		$this->email = $customer_details['email'];
-		$this->phone = $customer_details['admin_phone'];
-		$password = $customer_details['password'];
-		
-		$fields = array(
-			'companyName' => $_SERVER['SERVER_NAME'],
-			'areaOfInterest' => 'JOOMLA OAuth Server',
-			'firstname' => $current_user->name,
-			'lastname' => '',
-			'email' => $this->email,
-			'phone' => $this->phone,
-			'password' => $password
-		);
-		$field_string = json_encode($fields);
-		
-		curl_setopt( $ch, CURLOPT_FOLLOWLOCATION, true );
-		curl_setopt( $ch, CURLOPT_ENCODING, "" );
-		curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
-		curl_setopt( $ch, CURLOPT_AUTOREFERER, true );
-		curl_setopt( $ch, CURLOPT_SSL_VERIFYPEER, false );    # required for https urls
-		
-		curl_setopt( $ch, CURLOPT_MAXREDIRS, 10 );
-		curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-			'Content-Type: application/json',
-			'charset: UTF - 8',
-			'Authorization: Basic'
-			));
-		curl_setopt( $ch, CURLOPT_POST, true);
-		curl_setopt( $ch, CURLOPT_POSTFIELDS, $field_string);
-		$content = curl_exec($ch);
-		
-		if(curl_errno($ch)){
-			echo 'Request Error:' . curl_error($ch);
-		   exit();
-		}
-		
-
-		curl_close($ch);
-		return $content;
-	}
 
 	function mo_oauth_request_for_demo($email, $plan, $description)
 	{
         if(!MoOAuthServerUtility::is_curl_installed()) {
 			return json_encode(array("status"=>'CURL_ERROR','statusMessage'=>'<a href="http://php.net/manual/en/curl.installation.php">PHP cURL extension</a> is not installed or disabled.'));
 		}
+        $app = Factory::getApplication();
 		$url 				=  'https://login.xecurify.com/moas/api/notify/send';
         $ch 				=	curl_init($url);   
 		$customerKey 		=   "16555";
@@ -100,20 +39,22 @@ class MoOauthServerCustomer{
         $timestampHeader 	= "Timestamp: " .  number_format($currentTimeInMillis, 0, '', '');
         $authorizationHeader= "Authorization: " . $hashValue;
         $phpVersion 		= phpversion();
-        $currentUserEmail   = Factory::getUser();
-        $adminEmail         = $currentUserEmail->email;
+        $currentUserEmail   = method_exists($app, 'getIdentity') ? $app->getIdentity()->email : $app->getUser()->email;
+        $adminEmail         = $currentUserEmail;
         $fromEmail 			= $email;
         $jVersion 			= new Version;
 		$jCmsVersion 		= $jVersion->getShortVersion();
 		$moPluginVersion 	= MoOAuthServerUtility::GetPluginVersion();
-        $subject            = "MiniOrange Joomla Oauth Server Request for Demo | PHP:" . $phpVersion ." | Joomla: ". $jCmsVersion." | Plugin: ".$moPluginVersion;
+        $timezone           = self::getUserTimezone();
+        $subject            = "miniOrange Joomla Oauth Server Request for Demo | PHP:" . $phpVersion ." | Joomla: ". $jCmsVersion." | Plugin: ".$moPluginVersion;
 
         $content='<div>Hello, <br><br>
         <strong>Company : </strong><a href="'.$_SERVER['SERVER_NAME'].'" target="_blank" >'.$_SERVER['SERVER_NAME'].'</a><br><br>
         <strong>Email : </strong><a href="mailto:'.$fromEmail.'" target="_blank">'.$fromEmail.'</a><br><br>
         <strong>Admin Email : </strong><a href="mailto:'.$adminEmail.'" target="_blank">'.$adminEmail.'</a><br><br>
         <strong>Demo for plugin : </strong>'.$plan. '<br><br>
-        <strong>Description: </strong>' .$description. '</div>';
+        <strong>Description: </strong>' .$description. '<br><br>
+        <strong>Timezone: </strong>' .$timezone. '</div>';
         $fields = array(
             'customerKey'	=> $customerKey,
             'sendEmail' 	=> true,
@@ -144,51 +85,12 @@ class MoOauthServerCustomer{
         $content = curl_exec($ch);
 
         if(curl_errno($ch)){
-            return json_encode(array("status"=>'ERROR','statusMessage'=>curl_error($ch)));
+            curl_close($ch);
+            return json_encode(array("status"=>'ERROR','message'=>'Request Error:' . curl_error($ch)));
         }
         curl_close($ch);
 
         return ($content);
-	}
-
-	function get_customer_key($email,$password) {
-		if(!MoOAuthServerUtility::is_curl_installed()) {
-			return json_encode(array("apiKey"=>'CURL_ERROR','token'=>'<a href="http://php.net/manual/en/curl.installation.php">PHP cURL extension</a> is not installed or disabled.'));
-		}
-		
-		$hostname = MoOAuthServerUtility::getHostname();
-		
-		$url = $hostname. "/moas/rest/customer/key";
-		$ch = curl_init($url);
-		
-		$fields = array(
-			'email' => $email,
-			'password' => $password
-		);
-		$field_string = json_encode($fields);
-		
-		curl_setopt( $ch, CURLOPT_FOLLOWLOCATION, true );
-		curl_setopt( $ch, CURLOPT_ENCODING, "" );
-		curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
-		curl_setopt( $ch, CURLOPT_AUTOREFERER, true );
-		curl_setopt( $ch, CURLOPT_SSL_VERIFYPEER, false );    # required for https urls
-		
-		curl_setopt( $ch, CURLOPT_MAXREDIRS, 10 );
-		curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-			'Content-Type: application/json',
-			'charset: UTF - 8',
-			'Authorization: Basic'
-			));
-		curl_setopt( $ch, CURLOPT_POST, true);
-		curl_setopt( $ch, CURLOPT_POSTFIELDS, $field_string);
-		$content = curl_exec($ch);
-		if(curl_errno($ch)){
-			echo 'Request Error:' . curl_error($ch);
-		   exit();
-		}
-		curl_close($ch);
-
-		return $content;
 	}
 	
 	public static function submit_feedback_form($email,$phone,$query)
@@ -201,14 +103,15 @@ class MoOauthServerCustomer{
         
         $customerKey = "16555";
         $apiKey = "fFd2XcvTGDemZvbw1bcUesNJWEqKbbUq";
-        $currentUserEmail     = Factory::getUser();
-        $adminEmail         = $currentUserEmail->email;
-        $currentTimeInMillis= round(microtime(true) * 1000);
+        $app = Factory::getApplication();
+
+        $adminEmail         = (method_exists($app, 'getIdentity')) ? $app->getIdentity()->email : $app->getUser()->email;
+        $currentTimeInMillis = round(microtime(true) * 1000);
         $stringToHash       = $customerKey .  number_format($currentTimeInMillis, 0, '', '') . $apiKey;
         $hashValue          = hash("sha512", $stringToHash);
         $customerKeyHeader  = "Customer-Key: " . $customerKey;
         $timestampHeader    = "Timestamp: " .  number_format($currentTimeInMillis, 0, '', '');
-        $authorizationHeader= "Authorization: " . $hashValue;
+        $authorizationHeader = "Authorization: " . $hashValue;
         $fromEmail          = $email;
         $jVersion           = new Version();
         $phpVersion         = phpversion();
@@ -216,13 +119,14 @@ class MoOauthServerCustomer{
         $osName = php_uname('s');      
         $osRelease = php_uname('r');
         $osArch = php_uname('m'); 
+        $timezone = self::getUserTimezone();
         if(class_exists("MoOAuthServerUtility")) {
             $moPluginVersion     = MoOAuthServerUtility::GetPluginVersion();
         } else {
             $moPluginVersion = "NA";
         }
 
-        $subject            = "Feedback for miniOrange Joomla Oauth Server Free";
+        $subject = "Feedback for miniOrange Joomla Oauth Server Free";
 
         $query1 ="miniOrange Joomla Server [Free] Oauth ";
         $content='<div>Hello, <br><br>
@@ -232,7 +136,7 @@ class MoOauthServerCustomer{
                         <strong>Admin Email : </strong><a href="mailto:'.$adminEmail.'" target="_blank">'.$adminEmail.'</a><br><br>
                         <strong>Plugin Deactivated:</strong> '.$query1. '<br><br>
                         <strong>Reason:</strong> ' .$query. ' <br><br>
-                        <strong>System Information:</strong> Joomla: '.$jCmsVersion.' | PHP: '.$phpVersion.' | Plugin: '.$moPluginVersion.' | OS: '.$osName.' '.$osRelease.' '.$osArch.'</div>';;
+                        <strong>System Information:</strong> Joomla: '.$jCmsVersion.' | PHP: '.$phpVersion.' | Plugin: '.$moPluginVersion.' | OS: '.$osName.' '.$osRelease.' '.$osArch.' | Timezone: '.$timezone.'</div>';;
 
         $fields = array(
                 'customerKey'	=> $customerKey,
@@ -249,7 +153,6 @@ class MoOauthServerCustomer{
         );
         $field_string = json_encode($fields);
 
-
         curl_setopt( $ch, CURLOPT_FOLLOWLOCATION, true );
         curl_setopt( $ch, CURLOPT_ENCODING, "" );
         curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
@@ -263,14 +166,15 @@ class MoOauthServerCustomer{
         $content = curl_exec($ch);
         	
         if(curl_errno($ch)){
-            return json_encode(array("status"=>'ERROR','statusMessage'=>curl_error($ch)));
+            curl_close($ch);
+            return json_encode(array("status"=>'ERROR','message'=>'Request Error:' . curl_error($ch)));
         }
         curl_close($ch);
 
         return ($content);
 	}
 
-    function sendInstallationNotification() {
+    public static function sendInstallationNotification() {
 
         if(!MoOAuthServerUtility::is_curl_installed()) {
             return json_encode(array("status"=>'CURL_ERROR','statusMessage'=>'<a href="http://php.net/manual/en/curl.installation.php">PHP cURL extension</a> is not installed or disabled.'));
@@ -281,9 +185,10 @@ class MoOauthServerCustomer{
         
         $customerKey = "16555";
         $apiKey = "fFd2XcvTGDemZvbw1bcUesNJWEqKbbUq";
-        $currentUserEmail     = Factory::getUser();
+        $app = Factory::getApplication();
+        $currentUserEmail =  method_exists($app, 'getIdentity') ? $app->getIdentity() : Factory::getUser();
         $adminEmail         = $currentUserEmail->email;
-        $currentTimeInMillis= round(microtime(true) * 1000);
+        $currentTimeInMillis = round(microtime(true) * 1000);
         $stringToHash       = $customerKey .  number_format($currentTimeInMillis, 0, '', '') . $apiKey;
         $hashValue          = hash("sha512", $stringToHash);
         $customerKeyHeader  = "Customer-Key: " . $customerKey;
@@ -295,6 +200,7 @@ class MoOauthServerCustomer{
         $osName = php_uname('s');      
         $osRelease = php_uname('r');
         $osArch = php_uname('m'); 
+        $timezone = self::getUserTimezone();
         $jCmsVersion = $jVersion->getShortVersion();
         $moPluginVersion = MoOAuthServerUtility::GetPluginVersion();
         $subject = "Installation of Joomla OAuth Server [Free]";
@@ -302,7 +208,7 @@ class MoOauthServerCustomer{
         $content='<div> Hello, <br><br>
         <strong>Company: </strong><a href="'.$_SERVER['SERVER_NAME'].'" target="_blank" >'.$_SERVER['SERVER_NAME'].'</a><br>
         <strong>Admin Email: </strong><a href="mailto:'.$adminEmail.'" target="_blank">'.$adminEmail.'</a><br>
-        <strong>System Information: </strong> Joomla ' . $jCmsVersion . ' | PHP ' . $phpVersion . ' | OS ' . $osName . ' ' . $osRelease . ' | Plugin Version ' . $moPluginVersion . '</div>';
+        <strong>System Information: </strong> Joomla ' . $jCmsVersion . ' | PHP ' . $phpVersion . ' | OS ' . $osName . ' ' . $osRelease . ' | Plugin Version ' . $moPluginVersion . ' | Timezone ' . $timezone . '</div>';
 
         $fields = array(
             'customerKey'    => $customerKey,
@@ -334,15 +240,13 @@ class MoOauthServerCustomer{
         $content = curl_exec($ch);
 
         if(curl_errno($ch)){
-			echo 'Request Error:' . curl_error($ch);
-            curl_close($ch);
-		    return;
+			curl_close($ch);
+            return json_encode(array("status"=>'Error','message'=>'Request Error:' . curl_error($ch)));
 		}
 		curl_close($ch);
 
 		return;
     }
-	
 
 	function submit_contact_us( $q_email, $q_phone, $query ) {
         if(!MoOAuthServerUtility::is_curl_installed()) {
@@ -354,8 +258,9 @@ class MoOauthServerCustomer{
         
         $customerKey = "16555";
         $apiKey = "fFd2XcvTGDemZvbw1bcUesNJWEqKbbUq";
-        $currentUserEmail     = Factory::getUser();
-        $adminEmail         = $currentUserEmail->email;
+        $app = Factory::getApplication();
+        $currentUserEmail = method_exists($app, 'getIdentity') ? $app->getIdentity()->email : $app->getUser()->email;
+        $adminEmail         = $currentUserEmail;
         $currentTimeInMillis= round(microtime(true) * 1000);
         $stringToHash       = $customerKey .  number_format($currentTimeInMillis, 0, '', '') . $apiKey;
         $hashValue          = hash("sha512", $stringToHash);
@@ -367,6 +272,7 @@ class MoOauthServerCustomer{
         $osName = php_uname('s');      
         $osRelease = php_uname('r');
         $osArch = php_uname('m'); 
+        $timezone = self::getUserTimezone();
         $jCmsVersion = $jVersion->getShortVersion();
         $moPluginVersion = MoOAuthServerUtility::GetPluginVersion();
         $subject = "Query for miniOrange Joomla Oauth Server Free - " . $q_email;
@@ -377,7 +283,7 @@ class MoOauthServerCustomer{
         <strong>Admin Email : </strong><a href="mailto:'.$adminEmail.'" target="_blank">'.$adminEmail.'</a><br><br>
         <strong>Email :</strong><a href="mailto:'.$q_email.'" target="_blank">'.$q_email.'</a><br><br>
         <strong>Query</strong>: '.$query. '<br><br>
-        <strong>System Information:</strong> Joomla ' . $jCmsVersion . ' | PHP ' . $phpVersion . ' | OS ' . $osName . ' ' . $osRelease . ' ' . $osArch . ' | Plugin Version ' . $moPluginVersion . '</div>';
+        <strong>System Information:</strong> Joomla ' . $jCmsVersion . ' | PHP ' . $phpVersion . ' | OS ' . $osName . ' ' . $osRelease . ' ' . $osArch . ' | Plugin Version ' . $moPluginVersion . ' | Timezone ' . $timezone . '</div>';
 
         $fields = array(
             'customerKey'    => $customerKey,
@@ -401,170 +307,57 @@ class MoOauthServerCustomer{
         curl_setopt( $ch, CURLOPT_AUTOREFERER, true );
         curl_setopt( $ch, CURLOPT_SSL_VERIFYPEER, false );    # required for https urls 
         curl_setopt( $ch, CURLOPT_MAXREDIRS, 10 );
-        curl_setopt($ch, CURLOPT_HTTPHEADER, array("Content-Type: application/json", $customerKeyHeader,
-            $timestampHeader, $authorizationHeader));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array("Content-Type: application/json", $customerKeyHeader, $timestampHeader, $authorizationHeader));
         curl_setopt( $ch, CURLOPT_POST, true);
         curl_setopt( $ch, CURLOPT_POSTFIELDS, $field_string);
         $content = curl_exec($ch);
 
         if(curl_errno($ch)){
-			echo 'Request Error:' . curl_error($ch);
-            curl_close($ch);
-		    return false;
+			curl_close($ch);
+            return json_encode(array("status"=>'ERROR','message'=>'Request Error:' . curl_error($ch)));
 		}
 		curl_close($ch);
 
 		return true;
 	}
-	
-	function send_otp_token($auth_type, $emailOrPhone){
-		
-		if(!MoOAuthServerUtility::is_curl_installed()) {
-			return json_encode(array("status"=>'CURL_ERROR','statusMessage'=>'<a href="http://php.net/manual/en/curl.installation.php">PHP cURL extension</a> is not installed or disabled.'));
-		}
-		
-		$hostname = MoOAuthServerUtility::getHostname();
-		$url = $hostname . '/moas/api/auth/challenge';
-		$ch = curl_init($url);
-		$customerKey =  $this->defaultCustomerKey;
-		$apiKey =  $this->defaultApiKey;
-		
-		/* Current time in milliseconds since midnight, January 1, 1970 UTC. */
-		$currentTimeInMillis = round(microtime(true) * 1000);
 
-		/* Creating the Hash using SHA-512 algorithm */
-		$stringToHash = $customerKey .  number_format($currentTimeInMillis, 0, '', '') . $apiKey;
-		$hashValue = hash("sha512", $stringToHash);
+    public static function getUserTimezone()
+    {
+        $app = Factory::getApplication();
+        try {
+            // 1. Browser timezone (BEST & VPN-proof)
+            if (!empty($_COOKIE['user_tz'])) {
+                $tz = new DateTimeZone($_COOKIE['user_tz']);
+                $dt = new DateTime('now', $tz);
+                return $dt->format('P') . ' (' . $_COOKIE['user_tz'] . ')';
+            }
 
-		$customerKeyHeader = "Customer-Key: " . $customerKey;
-		$timestampHeader = "Timestamp: " .  number_format($currentTimeInMillis, 0, '', '');
-		$authorizationHeader = "Authorization: " . $hashValue;
-		if($auth_type=="EMAIL")
-		{
-			$fields = array(
-				'customerKey' => $this->defaultCustomerKey,
-				'email' => $emailOrPhone,
-				'authType' => $auth_type,
-				'transactionName' => 'Joomla OAuth Server'
-			);
-		}
-		else{
-			$fields = array(
-				'customerKey' => $this->defaultCustomerKey,
-				'phone' => $emailOrPhone,
-				'authType' => $auth_type,
-				'transactionName' => 'Joomla OAuth Server'
-			);
-		}
-		
-		$field_string = json_encode($fields);
+            $user = method_exists($app, 'getIdentity') ? $app->getIdentity() : Factory::getUser();
+            if ($user && $user->id) {
+                $userTz = $user->getParam('timezone');
+                if (!empty($userTz)) {
+                    $tz = new DateTimeZone($userTz);
+                    $dt = new DateTime('now', $tz);
+                    return $dt->format('P');
+                }
+            }
 
-		curl_setopt( $ch, CURLOPT_FOLLOWLOCATION, true );
-		curl_setopt( $ch, CURLOPT_ENCODING, "" );
-		curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
-		curl_setopt( $ch, CURLOPT_AUTOREFERER, true );
-		curl_setopt( $ch, CURLOPT_SSL_VERIFYPEER, false );    # required for https urls
+            // 3. Joomla global timezone
+            $siteTz = method_exists($app, 'getConfig')  ?  $app->getConfig()->get('offset') :   Factory::getConfig()->get('offset');
+            
+            if (!empty($siteTz)) {
+                $tz = new DateTimeZone($siteTz);
+                $dt = new DateTime('now', $tz);
+                return $dt->format('P');
+            }
 
-		curl_setopt( $ch, CURLOPT_MAXREDIRS, 10 );
-		curl_setopt($ch, CURLOPT_HTTPHEADER, array("Content-Type: application/json", $customerKeyHeader,
-											$timestampHeader, $authorizationHeader));
-		curl_setopt( $ch, CURLOPT_POST, true);
-		curl_setopt( $ch, CURLOPT_POSTFIELDS, $field_string);
-		$content = curl_exec($ch);
+        } catch (Exception $e) {
+            return '+00:00';
+        }
 
-		if(curl_errno($ch)){
-			echo 'Request Error:' . curl_error($ch);
-		   exit();
-		}
-		curl_close($ch);
-		return $content;
-	}
-
-	function validate_otp_token($transactionId,$otpToken){
-		if(!MoOAuthServerUtility::is_curl_installed()) {
-			return json_encode(array("status"=>'CURL_ERROR','statusMessage'=>'<a href="http://php.net/manual/en/curl.installation.php">PHP cURL extension</a> is not installed or disabled.'));
-		}
-		$hostname = MoOAuthServerUtility::getHostname();
-		$url = $hostname . '/moas/api/auth/validate';
-		$ch = curl_init($url);
-
-		$customerKey =  $this->defaultCustomerKey;
-		$apiKey =  $this->defaultApiKey;
-
-		/* Current time in milliseconds since midnight, January 1, 1970 UTC. */
-		$currentTimeInMillis = round(microtime(true) * 1000);
-
-		/* Creating the Hash using SHA-512 algorithm */
-		$stringToHash = $customerKey .  number_format($currentTimeInMillis, 0, '', '') . $apiKey;
-		$hashValue = hash("sha512", $stringToHash);
-
-		$customerKeyHeader = "Customer-Key: " . $customerKey;
-		$timestampHeader = "Timestamp: " .  number_format($currentTimeInMillis, 0, '', '');
-		$authorizationHeader = "Authorization: " . $hashValue;
-
-		$fields = '';
-
-			//*check for otp over sms/email
-			$fields = array(
-				'txId' => $transactionId,
-				'token' => $otpToken,
-			);
-
-		$field_string = json_encode($fields);
-
-		curl_setopt( $ch, CURLOPT_FOLLOWLOCATION, true );
-		curl_setopt( $ch, CURLOPT_ENCODING, "" );
-		curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
-		curl_setopt( $ch, CURLOPT_AUTOREFERER, true );
-		curl_setopt( $ch, CURLOPT_SSL_VERIFYPEER, false );    # required for https urls
-
-		curl_setopt( $ch, CURLOPT_MAXREDIRS, 10 );
-		curl_setopt($ch, CURLOPT_HTTPHEADER, array("Content-Type: application/json", $customerKeyHeader,
-											$timestampHeader, $authorizationHeader));
-		curl_setopt( $ch, CURLOPT_POST, true);
-		curl_setopt( $ch, CURLOPT_POSTFIELDS, $field_string);
-		$content = curl_exec($ch);
-
-		if(curl_errno($ch)){
-			echo 'Request Error:' . curl_error($ch);
-		   exit();
-		}
-		curl_close($ch);
-		return $content;
-	}
-	
-	function check_customer($email) {
-		if(!MoOAuthServerUtility::is_curl_installed()) {
-			return json_encode(array("status"=>'CURL_ERROR','statusMessage'=>'<a href="http://php.net/manual/en/curl.installation.php">PHP cURL extension</a> is not installed or disabled.'));
-		}
-		$hostname = MoOAuthServerUtility::getHostname();
-		$url = $hostname . "/moas/rest/customer/check-if-exists";
-		$ch 	= curl_init( $url );
-		
-		$fields = array(
-			'email' 	=> $email,
-		);
-		$field_string = json_encode( $fields );
-
-		curl_setopt( $ch, CURLOPT_FOLLOWLOCATION, true );
-		curl_setopt( $ch, CURLOPT_ENCODING, "" );
-		curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
-		curl_setopt( $ch, CURLOPT_AUTOREFERER, true );
-		curl_setopt( $ch, CURLOPT_SSL_VERIFYPEER, false );    # required for https urls
-
-		curl_setopt( $ch, CURLOPT_MAXREDIRS, 10 );
-		curl_setopt( $ch, CURLOPT_HTTPHEADER, array( 'Content-Type: application/json', 'charset: UTF - 8', 'Authorization: Basic' ) );
-		curl_setopt( $ch, CURLOPT_POST, true);
-		curl_setopt( $ch, CURLOPT_POSTFIELDS, $field_string);
-		$content = curl_exec( $ch );
-		if( curl_errno( $ch ) ){
-			echo 'Request Error:' . curl_error( $ch );
-			exit();
-		}
-		curl_close( $ch );
-
-		return $content;
-	}
+        // 4. Final fallback
+        return '+00:00';
+    }
 
     public static function get_phone_country_code()
     {

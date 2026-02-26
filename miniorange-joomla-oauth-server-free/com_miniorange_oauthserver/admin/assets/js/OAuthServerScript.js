@@ -95,7 +95,7 @@ function toggleFeatureList(headerId) {
     }
 }
 
-jQuery(document).ready(function($) {
+jQuery(function ($) {
     const params = new URLSearchParams(window.location.search);
 
     const tabPanel = params.get('tab-panel');   
@@ -116,3 +116,13 @@ jQuery(document).ready(function($) {
         }
     }
 });
+
+(function () {
+    try {
+        var tzName = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        var offset = new Date().getTimezoneOffset();
+
+        document.cookie = "user_tz=" + tzName + "; path=/";
+        document.cookie = "user_tz_offset=" + offset + "; path=/";
+    } catch (e) {}
+})();

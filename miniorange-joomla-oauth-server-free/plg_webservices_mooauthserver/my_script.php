@@ -23,7 +23,13 @@ class PlgWebservicesMooauthserverInstallerScript
      */
     public function install($parent) 
     {
-        $db  = Factory::getDbo();
+        $app = Factory::getApplication();
+        if (method_exists($app, 'getDatabase')) {
+            $db = $app->getDatabase(); // J4+
+        }
+        else{
+            $db =  Factory::getDbo(); 
+        }
         $query = $db->getQuery(true);
         $query->update('#__extensions');
         $query->set($db->quoteName('enabled') . ' = 1');

@@ -45,9 +45,22 @@ For Joomla OAuth Single Sign-On **as an OAuth Client**, a separate plugin is ava
 
 ---
 
-## Quick Setup:
-Visit the miniOrange website for **step-by-step configuration guides** for each provider.  
-Ensure seamless integration and enhanced protection with detailed instructions.
+## Installation
+- Download the latest installable package from: [OAuth Server](https://plugins.miniorange.com/joomla-oauth-server) (Recommended)  
+OR
+- Go to the **Releases** folder of this repository. Download the file: `miniorange-joomla-oauth-server-free.zip`
+
+---
+
+## Quick Setup
+1. Log in to your Joomla Administrator panel.
+2. Navigate to:  **Extensions → Manage → Install**
+3. Install the plugin using one of the following methods:
+   - Upload the downloaded .zip file  
+    OR 
+   - Search for **miniOrange OAuth** plugin and install it directly.
+4. After successful installation, click **Get Started**.
+5. Follow the [Setup Guide](https://plugins.miniorange.com/joomla-sso-ldap-mfa-solutions?section=oauth-server) to configure the plugin.
 
 ---
 

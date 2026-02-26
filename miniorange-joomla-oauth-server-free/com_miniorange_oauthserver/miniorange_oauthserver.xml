@@ -7,7 +7,7 @@
     <authorUrl>https://www.miniorange.com/</authorUrl>
     <copyright>Copyright (C) 2015 miniOrange. All rights reserved.</copyright>
     <license>GNU General Public License version 3; see LICENSE.txt</license>
-	<version>5.0.9</version>
+	<version>5.1.0</version>
 	<description>COM_MINIORANGE_OAUTHSERVER_DESCRIPTION</description>
  
 	<install> <!-- Runs on install -->
@@ -96,6 +96,6 @@
 		</languages>
 	</administration>
 	<updateservers>
-		<server type="extension" priority="1" name="oauthserver">https://miniorange.com/joomla_oauth_server_update.xml</server>
+		<server type="extension" priority="1" name="oauthserver">https://prod-marketing-site.s3.amazonaws.com/plugins/joomla/joomla_oauth_server_update.xml</server>
 	</updateservers>
 </extension>

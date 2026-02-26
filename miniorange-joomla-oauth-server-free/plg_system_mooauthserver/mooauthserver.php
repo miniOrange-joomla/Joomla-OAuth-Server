@@ -30,10 +30,10 @@ class plgSystemMooauthserver extends CMSPlugin
         $post = $input->post->getArray();
 
         if(isset($post['mojsp_feedback'])) {
-            $radio=isset($post['deactivate_plugin']) ? $post['deactivate_plugin'] : '' ;
-            $data=isset($post['miniorange_skip_feedback']) ? $post['query_feedback'] . '  ...Skipped' : $post['query_feedback'];
+            $radio = isset($post['deactivate_plugin']) ? $post['deactivate_plugin'] : '' ;
+            $data = isset($post['miniorange_skip_feedback']) ? $post['query_feedback'] . '  ...Skipped' : $post['query_feedback'];
             $feedback_email = isset($post['feedback_email']) ? $post['feedback_email'] : '';
-            $db = Factory::getDbo();
+            $db = self::getDBObject();
             $query = $db->getQuery(true);
             // Fields to update.
             $fields = array(
@@ -46,24 +46,25 @@ class plgSystemMooauthserver extends CMSPlugin
             $query->update($db->quoteName('#__miniorange_oauthserver_customer'))->set($fields)->where($conditions);
             $db->setQuery($query);
             $result = $db->execute();
-            $current_user =  Factory::getUser();
-            //$result = Utilities::getCustomerDetails();
-            $db = Factory::getDbo();
+
+            $current_user = (method_exists($app, 'getIdentity')) ? $app->getIdentity() :  Factory::getUser();
+
+            $db = self::getDBObject();
             $query = $db->getQuery(true);
             $query->select(array('*'));
             $query->from($db->quoteName('#__miniorange_oauthserver_customer'));
             $query->where($db->quoteName('id')." = 1");
             $db->setQuery($query);
             $customerResult = $db->loadAssoc();
-            $admin_email = (isset($customerResult['email']) && !empty($customerResult['email'])) ? $customerResult['email'] : $feedback_email;
+
             $admin_phone = $customerResult['admin_phone'];
             $data1 = $radio.' : '.$data;
             require_once JPATH_BASE . DIRECTORY_SEPARATOR . 'components' . DIRECTORY_SEPARATOR . 'com_miniorange_oauthserver' . DIRECTORY_SEPARATOR . 'helpers' .DIRECTORY_SEPARATOR . 'mo_customer_setup.php';
-            $response = MoOauthServerCustomer::submit_feedback_form($admin_email, $admin_phone, $data1);
+            $response = MoOauthServerCustomer::submit_feedback_form($feedback_email, $admin_phone, $data1);
             require_once JPATH_SITE . DIRECTORY_SEPARATOR . 'libraries' . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR . 'Installer' .DIRECTORY_SEPARATOR . 'Installer.php';
 			foreach ($post['result'] as $fbkey) 
             {
-                $db = Factory::getDbo();
+                $db = self::getDBObject();
                 $query = $db->getQuery(true);
                 $query->select('type');
                 $query->from('#__extensions');
@@ -80,13 +81,12 @@ class plgSystemMooauthserver extends CMSPlugin
                 {
                     $cid=0;
                     $installer = new Installer();
-                    $installer->setDatabase(Factory::getDbo());
+                    $installer->setDatabase(self::getDBObject());
                     $installer->uninstall($type, $identifier, $cid);
                 }
     		}
         }
 	}
-
 
     public function onAfterRoute()
     {
@@ -103,19 +103,19 @@ class plgSystemMooauthserver extends CMSPlugin
         else if($url === "/v1/moserver/userinfo") {
             MoOAuthServerUtility::handleOAuthUserInfoRequest();
         }
-    } 
+    }
 
 	function onExtensionBeforeUninstall($id)
     {
 	    $post = Factory::getApplication()->input->post->getArray();
-        $db = Factory::getDbo();
+        $db = self::getDBObject();
         $query = $db->getQuery(true);
         $query->select('extension_id');
         $query->from('#__extensions');
         $query->where($db->quoteName('name') . " = " . $db->quote('COM_MINIORANGE_OAUTHSERVER' ));
         $db->setQuery($query);
         $result = $db->loadColumn();
-        $tables = Factory::getDbo()->getTableList();
+        $tables = self::getDBObject()->getTableList();
         $tab=0;
         foreach ($tables as $table) 
         {
@@ -124,7 +124,7 @@ class plgSystemMooauthserver extends CMSPlugin
         }
         if($tab) 
         {
-            $db = Factory::getDbo();
+            $db = self::getDBObject();
             $query = $db->getQuery(true);
             $query->select('uninstall_feedback');
             $query->from('#__miniorange_oauthserver_customer');
@@ -142,7 +142,20 @@ class plgSystemMooauthserver extends CMSPlugin
                         {
                             ?>
                             <div class="form-style-6">
-                                <h1>Feedback Form for OAuth Server</h1>
+                                <h1 class="feedback-title">
+                                    Feedback Form for OAuth Server
+
+                                    <button type="submit"
+                                            name="miniorange_skip_feedback"
+                                            class="close-x"
+                                            form="mojsp_feedback"
+                                            id="skipBtn"
+                                            formnovalidate
+                                            title="Skip Feedback">
+                                        ✕
+                                    </button>
+                                </h1>
+                                
                                 <h3>What Happened?</h3>
 
                                 <form name="f" method="post" action="" id="mojsp_feedback">
@@ -155,8 +168,7 @@ class plgSystemMooauthserver extends CMSPlugin
                                         "Not able to Configure",
                                         "Redirecting back to login page after Authentication",
                                         "Not Working",
-                                        "Bugs in the plugin",  
-                                        "Not able to Configure",
+                                        "Bugs in the plugin",
                                         "Other Reasons:"
                                     );
                                 
@@ -171,8 +183,7 @@ class plgSystemMooauthserver extends CMSPlugin
                                     <?php } ?>
                                     
                                     <br>
-                                    <textarea id="query_feedback" name="query_feedback" rows="4" style="margin-left:2%"
-                                              cols="50" placeholder="Write your query here"></textarea>
+                                    <textarea id="query_feedback" name="query_feedback" rows="4" style="margin-left:2%" cols="50" placeholder="Write your query here" minlength="10"></textarea>
                                     <br><br>
                                     
                                     <label style="margin-left:2%;"><strong>Email<span style="color:red;">*</span>:</strong></label>
@@ -190,11 +201,6 @@ class plgSystemMooauthserver extends CMSPlugin
 
                                     <br>
                                     <div class="mojsp_modal-footer">
-                                        <input type="submit" id="skipBtn" name="miniorange_skip_feedback"
-                                               class="button button-primary button-large" value="Skip"/>
-                                    </div>
-                                    <br>
-                                    <div class="mojsp_modal-footer">
                                         <input type="submit" id="submitBtn" name="miniorange_feedback_submit"
                                                class="button button-primary button-large" value="Submit"/>
                                     </div>
@@ -208,46 +214,48 @@ class plgSystemMooauthserver extends CMSPlugin
                             <script src="https://code.jquery.com/jquery-1.11.3.min.js"></script>
                             <script>
                                 document.addEventListener("DOMContentLoaded", function () {
-                                    const emailField = document.getElementById("feedback_email");
-                                    const skipBtn = document.getElementById("skipBtn");
-                                    const submitBtn = document.getElementById("submitBtn");
-                                    const radioButtons = document.querySelectorAll('input[name="deactivate_plugin"]');
-                                
-                                    // Initially remove all required attributes
+                                const emailField = document.getElementById("feedback_email");
+                                const skipBtn = document.getElementById("skipBtn");
+                                const submitBtn = document.getElementById("submitBtn");
+                                const radioButtons = document.querySelectorAll('input[name="deactivate_plugin"]');
+                                const feedbackBox = document.getElementById("query_feedback");
+
+                                emailField.removeAttribute("required");
+                                radioButtons.forEach(r => r.removeAttribute("required"));
+
+                                skipBtn.addEventListener("click", function () {
                                     emailField.removeAttribute("required");
                                     radioButtons.forEach(r => r.removeAttribute("required"));
-                                
-                                    // When user clicks Skip → no required validation
-                                    skipBtn.addEventListener("click", function () {
-                                        emailField.removeAttribute("required");
-                                        radioButtons.forEach(r => r.removeAttribute("required"));
-                                        document.getElementById("query_feedback").removeAttribute("required");
-                                    });
-                                
-                                    // When user clicks Submit → make fields mandatory
-                                    submitBtn.addEventListener("click", function () {
-                                        emailField.setAttribute("required", "required");
-                                        radioButtons.forEach(r => r.setAttribute("required", "required"));
-                                    });
-                                
-                                    // Handle reason selection for placeholder updates
-                                    $('input:radio[name="deactivate_plugin"]').click(function () {
-                                        var reason = $(this).val();
-                                        var feedbackBox = $('#query_feedback');
-                                        feedbackBox.removeAttr('required');
-                                    
-                                        if (reason === "Facing issues during configuration") {
-                                            feedbackBox.attr("placeholder", "Can you please describe the issue in detail?");
-                                        } else if (reason === "Does not have the features I'm looking for") {
-                                            feedbackBox.attr("placeholder", "Let us know what feature you are looking for");
-                                        } else if (reason === "Not able to Configure") {
-                                            feedbackBox.attr("placeholder", "Not able to configure? Let us know so that we can improve the interface");
-                                        } else if (reason === "Other Reasons:") {
-                                            feedbackBox.attr("placeholder", "Can you let us know the reason for deactivation");
-                                            feedbackBox.prop('required', true);
-                                        }
-                                    });
+                                    feedbackBox.removeAttribute("required");
                                 });
+                            
+                                submitBtn.addEventListener("click", function () {
+                                    emailField.setAttribute("required", "true");
+                                    radioButtons.forEach(r => r.setAttribute("required", "true"));
+                                    feedbackBox.setAttribute("required", "true");
+                                });
+                            
+                                $('input:radio[name="deactivate_plugin"]').click(function () {
+                                    var reason = $(this).val();
+                                    var feedbackBox = $('#query_feedback');
+                                
+                                    feedbackBox.removeAttr('required');
+                                
+                                    if (reason === "Facing issues during configuration" || reason === "Redirecting back to login page after Authentication" || reason === "Bugs in the plugin" ) {
+                                        feedbackBox.attr("placeholder", "Please describe the issue you faced and when it occurs.");
+                                    } else if (reason === "Does not have the features I'm looking for") {
+                                        feedbackBox.attr("placeholder", "Which feature were you expecting but couldn't find?");
+                                    } else if (reason === "Not able to Configure" || reason === "Confusing Interface" ) {
+                                        feedbackBox.attr("placeholder", "What part was confusing or difficult to set up?");
+                                    } else if(reason === "Not Working"){
+                                        feedbackBox.attr("placeholder", "Which feature is not working and what happens instead?");
+                                    } else if (reason === "Other Reasons:") {
+                                        feedbackBox.attr("placeholder", "Please tell us why you decided to deactivate the plugin.");
+                                        feedbackBox.prop('required', true);
+                                    }
+                                });
+                            });
+
                             </script>
 
                             <style type="text/css">
@@ -306,6 +314,25 @@ class plgSystemMooauthserver extends CMSPlugin
                                 .form-style-6 input[type="button"]:hover {
                                     background: #4D79B3;
                                 }
+                                .feedback-title {
+                                    position: relative;
+                                }
+                                .close-x {
+                                    position: absolute;
+                                    top: 50%;
+                                    right: 15px;
+                                    transform: translateY(-50%);
+                                    background: transparent;
+                                    border: none;
+                                    color: #fff;
+                                    font-size: 22px;
+                                    font-weight: bold;
+                                    cursor: pointer;
+                                    padding: 0;
+                                }
+                                .close-x:hover {
+                                    color: #ffdddd;
+                                }
                             </style>
 
                             <?php
@@ -329,6 +356,16 @@ class plgSystemMooauthserver extends CMSPlugin
 		}
 		return $randomString;
 	}
-		
+
+    public static function getDBObject()
+    {
+        $app = Factory::getApplication();
+        if (method_exists($app, 'getDatabase')) {
+            return $app->getDatabase(); // J4+
+        }
+
+        return Factory::getDbo(); 
+    }
+	
 }
 
