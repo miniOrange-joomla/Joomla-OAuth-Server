@@ -77,3 +77,6 @@ Simplify secure access to your Joomla resources today!
  
 ## Website:
 Check out our website! Visit [https://plugins.miniorange.com/joomla](https://plugins.miniorange.com/joomla) to see all our Joomla plugins.
+
+![GitHub Downloads](https://img.shields.io/github/downloads/miniOrange-joomla/Joomla-OAuth-Server/total?cacheSeconds=60)
+<img src="https://komarev.com/ghpvc/?username=miniOrange-joomla&label=Repo%20Views&color=0e75b6&style=flat" />
