@@ -16,8 +16,6 @@ CREATE TABLE IF NOT EXISTS `#__miniorange_oauthserver_customer` (
 PRIMARY KEY (`id`)
 ) DEFAULT COLLATE=utf8_general_ci;
 
-
-
 CREATE TABLE IF NOT EXISTS `#__miniorange_oauthserver_config` (
 `id` int(10) UNSIGNED AUTO_INCREMENT NOT NULL,
 `client_name` varchar(255) NOT NULL ,
@@ -34,5 +32,33 @@ ALTER TABLE `#__users` ADD COLUMN `client_token` varchar(255) DEFAULT 0;
 ALTER TABLE `#__users` ADD COLUMN `time_stamp` int(11) DEFAULT 0;
 
 INSERT IGNORE INTO `#__miniorange_oauthserver_config` (`id`,`client_count`) values (1,0);
-INSERT IGNORE INTO `#__miniorange_oauthserver_customer`(`id`,`login_status`) values (1,false) ;
+INSERT IGNORE INTO `#__miniorange_oauthserver_customer` (
+`id`,
+`email`,
+`password`,
+`admin_phone`,
+`customer_key`,
+`customer_token`,
+`api_key`,
+`login_status`,
+`registration_status`,
+`transaction_id`,
+`email_count`,
+`sms_count`,
+`uninstall_feedback`
+) VALUES (
+1,
+'',
+'',
+'',
+'MTY1NTU=',
+'',
+'ZkZkMlhjdkdHRGVtWnZidzFiY1Vlc05KV0VxS2JiVXE=',
+0,
+'',
+'',
+0,
+0,
+0
+);
 

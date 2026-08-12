@@ -23,13 +23,28 @@ function oauth_account_exist(){
     jQuery('#resend_otp_form').submit();
 }
 
-function copyToClipboard(element) 
+function copyToClipboard(element, trigger)
 {
-    var temp = jQuery("<input>");
-    jQuery("body").append(temp);
-    temp.val(jQuery(element).text()).select();
-    document.execCommand("copy");
-    temp.remove();  
+    var text = jQuery(element).text().trim();
+
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text);
+    } else {
+        var temp = jQuery("<textarea>");
+        jQuery("body").append(temp);
+        temp.val(text).select();
+        document.execCommand("copy");
+        temp.remove();
+    }
+
+    var $trigger = trigger ? jQuery(trigger) : jQuery(element).siblings(".copytooltip").first();
+
+    if ($trigger.length) {
+        $trigger.addClass("mo_copy_show_tooltip");
+        setTimeout(function() {
+            $trigger.removeClass("mo_copy_show_tooltip");
+        }, 1500);
+    }
 }
 
 function validateEmail(emailField) {

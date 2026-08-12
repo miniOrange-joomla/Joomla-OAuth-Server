@@ -6,8 +6,8 @@
  * @author      miniOrange Security Software Pvt. Ltd.
  * @copyright   Copyright (C) 2015 miniOrange (https://www.miniorange.com)
  * @license     GNU General Public License version 3; see LICENSE.txt
- * @contact     joomlasupport@xecurify.com
- */ 
+ * @contact     info@xecurify.com
+ */
 
 defined('_JEXEC') or die('Restricted access');
 use Joomla\CMS\MVC\Controller\FormController;
@@ -16,179 +16,205 @@ use Joomla\CMS\Language\Text;
 
 jimport('miniorangeoauthserver.utility.MoOAuthServerUtility');
 
-class miniorangeoauthserverControllerAccountSetup extends FormController
+class MiniorangeoauthserverControllerAccountSetup extends FormController
 {
-    function __construct()
-    {
-        $this->view_list = 'accountsetup';
-        parent::__construct();
-    }
-   
-    function moOAuthRequestForDemoPlan()
-    {
-        $app   = Factory::getApplication();
-        $input = method_exists($app, 'getInput') ? $app->getInput() : $app->input;
+	public function __construct($config = array(), $factory = null, $app = null, $input = null)
+	{
+		$config['view_list'] = 'accountsetup';
 
-        $post = $input->post->getArray();
-        
-        if(count($post)==0) {
-            $this->setRedirect('index.php?option=com_miniorange_oauthserver&view=accountsetup');
-            return;
-        }
+		parent::__construct($config, $factory, $app, $input);
+	}
 
-        $email          = isset($post['email']) ? trim(strip_tags($post['email'])) : '';
-        $plan           = isset($post['plan']) ? trim(strip_tags($post['plan'])) : '';
-        $description    = isset($post['description']) ? trim(strip_tags($post['description'])) : '';
-        $customer       = new MoOauthServerCustomer();
- 
-        $response = json_decode($customer->mo_oauth_request_for_demo($email, $plan, $description));
+	public function moOAuthRequestForDemoPlan()
+	{
+		$app   = Factory::getApplication();
+		$input = method_exists($app, 'getInput') ? $app->getInput() : $app->input;
 
-        if($response->status != 'ERROR') {
-            $this->setRedirect('index.php?option=com_miniorange_oauthserver&view=accountsetup&tab-panel=requestdemo', Text::_('COM_MINIORANGE_OAUTHSERVER_REQUEST_DEMO_SUCCESS'));
-        } else {
-            $this->setRedirect('index.php?option=com_miniorange_oauthserver&view=accountsetup&tab-panel=requestdemo', Text::_('COM_MINIORANGE_OAUTHSERVER_REQUEST_DEMO_ERROR'), 'error');
-        }
-    }
-    
-    function addclient()
-    {
-        $app = Factory::getApplication();
-        $input = method_exists($app, 'getInput') ? $app->getInput() : $app->input;
-        $post = $input->post->getArray();
-        $user = method_exists($app, 'getIdentity') ? $app->getIdentity() : Factory::getUser();
-        $client_id = miniorangeoauthserverControllerAccountSetup::generateRandomString(30);
-        $client_secret= miniorangeoauthserverControllerAccountSetup::generateRandomString(30);
-        $authorized_uri=trim($post['mo_oauth_client_redirect_url'], " ");
-        // Fields to update.
-        $fields = array(
-        'client_name' => $post['mo_oauth_custom_client_name'],
-        'client_id'=>$client_id,
-        'client_secret' => $client_secret,
-        'authorized_uri' => $authorized_uri,
-        'client_count' =>1
-        );
-             
-        // Conditions for which records should be updated.
-        $conditions = array(
-        'id' => 1
-        );
+		$post = $input->post->getArray();
 
-        MoOAuthServerUtility::generic_update_query("#__miniorange_oauthserver_config", $fields, $conditions);
-        MoOAuthServerUtility::plugin_efficiency_check($user->get('email'), $post['mo_oauth_custom_client_name'], $authorized_uri, "Added Client information");
-        $this->setRedirect('index.php?option=com_miniorange_oauthserver&tab-panel=configuration&pa=2', Text::_('COM_MINIORANGE_OAUTHSERVER_CLIENT_ADDED_SUCCESSFULLY'));    
-    }
-    
-    function deleteclient()
-    {
-            
-        // Fields to update.
-        $fields = array(
-        'client_name' =>null,
-        'client_id' =>null,
-        'client_secret' =>null,
-        'authorized_uri' =>null,
-        'client_count' =>0,
-                
-        );
-             
-        // Conditions for which records should be updated.
-        $conditions = array(
-        'id'=> 1
-        );
-        MoOAuthServerUtility::generic_update_query("#__miniorange_oauthserver_config", $fields, $conditions);
-            
-        $this->setRedirect('index.php?option=com_miniorange_oauthserver&tab-panel=configuration', Text::_('COM_MINIORANGE_OAUTHSERVER_CLIENT_DELETE_SUCCESSFULLY'));
-        
-    }
-        
-        
-    function generateRandomString($length=30)
-    {
-        $characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-        $charactersLength = strlen($characters);
-        $randomString = '';
-        for ($i = 0; $i < $length; $i++) {
-            $randomString .= $characters[rand(0, $charactersLength - 1)];
-        }
-        return $randomString;
-    }
-    
-    function updateclient()
-    {
-        $app   = Factory::getApplication();
-        $input = method_exists($app, 'getInput') ? $app->getInput() : $app->input;
+		if (count($post) == 0)
+		{
+			$this->setRedirect('index.php?option=com_miniorange_oauthserver&view=accountsetup');
 
-        $post = $input->post->getArray();        
-        $authorized_uri=trim($post['mo_oauth_client_redirect_url'], " ");
-        // Fields to update.
-        $fields = array(
-        'authorized_uri'=>$authorized_uri,
-        );
-        // Conditions for which records should be updated.
-        $conditions = array(
-        'id' => 1
-        );
-        MoOAuthServerUtility::generic_update_query("#__miniorange_oauthserver_config", $fields, $conditions);
+			return;
+		}
 
-        $this->setRedirect('index.php?option=com_miniorange_oauthserver&tab-panel=configuration&pa=2', Text::_('COM_MINIORANGE_OAUTHSERVER_CLIENT_UPDATE_SUCCESSFULLY'));
-    }
-    
-    function moOAuthContactUs()
-    {
-        $app   = Factory::getApplication();
-        $input = method_exists($app, 'getInput') ? $app->getInput() : $app->input;
-        
-        $post = $input->post->getArray();
+		$email          = isset($post['email']) ? trim(strip_tags($post['email'])) : '';
+		$plan           = isset($post['plan']) ? trim(strip_tags($post['plan'])) : '';
+		$description    = isset($post['description']) ? trim(strip_tags($post['description'])) : '';
+		$customer       = new MoOauthServerCustomer;
 
-        $query_email=$post['query_email'];
-        $query=$post['query'];
-        
-        if(MoOAuthServerUtility::check_empty_or_null($query_email) || MoOAuthServerUtility::check_empty_or_null($query) ) {
-            $this->setRedirect('index.php?option=com_miniorange_oauthserver&view=accountsetup', Text::_('COM_MINIORANGE_OAUTHSERVER_QUERY_EMAIL_ERROR'), 'error');
-            return;
-        } 
-        else
-        {
-            if(isset($post['mo_oauthserver_select_plan'])) {
-                $query = " <br> [mo_oauthserver_select_plan]:  ".$post['mo_oauthserver_select_plan']." <br> [number_of_users]:  ".$post['number_of_users']." <br> [Query]: ".$post['query'];
-            }
-            
-            $phone =  $post['country_code'] . ' ' . $post['query_phone'];
-            $contact_us = new MoOauthServerCustomer();
-            $submited = json_decode($contact_us->submit_contact_us($query_email, $phone, $query), true);
-            if(json_last_error() == JSON_ERROR_NONE) {
-                if(is_array($submited) && array_key_exists('status', $submited) && $submited['status'] == 'ERROR') {
-                    $this->setRedirect('index.php?option=com_miniorange_oauthserver&view=accountsetup', $submited['message'], 'error');
-                }else{
-                    if ($submited == false ) {
-                        $this->setRedirect('index.php?option=com_miniorange_oauthserver&view=accountsetup', Text::_('COM_MINIORANGE_OAUTHSERVER_QUERY_ERROR'), 'error');
-                    } else {
-                        
-                        if(isset($post['mo_oauthserver_select_plan'])) {
-                        
-                            $this->setRedirect('index.php?option=com_miniorange_oauthserver&view=accountsetup&tab-panel=requestdemo', Text::_('COM_MINIORANGE_OAUTHSERVER_QUERY_RESPONSE'));
-                        
-                        }else{
-                            
-                            $this->setRedirect('index.php?option=com_miniorange_oauthserver&view=accountsetup&tab-panel=requestdemo', Text::_('COM_MINIORANGE_OAUTHSERVER_QUERY_RESPONSE2'));
-                            
-                        }
-                    
-                    }
-                }
-            }
+		$response = json_decode($customer->moOauthRequestForDemo($email, $plan, $description));
 
-        }
-    }
+		if ($response->status != 'ERROR')
+		{
+			$this->setRedirect('index.php?option=com_miniorange_oauthserver&view=accountsetup&tab-panel=requestdemo', Text::_('COM_MINIORANGE_OAUTHSERVER_REQUEST_DEMO_SUCCESS'));
+		}
+		else
+		{
+			$this->setRedirect('index.php?option=com_miniorange_oauthserver&view=accountsetup&tab-panel=requestdemo', Text::_('COM_MINIORANGE_OAUTHSERVER_REQUEST_DEMO_ERROR'), 'error');
+		}
+	}
 
-    public function exportConfiguration()
-    {
-        // Define single or multiple table names here
-        $tableNames = [
-            '#__miniorange_oauthserver_customer',
-            '#__miniorange_oauthserver_config',
-        ];
+	public function addclient()
+	{
+		$app = Factory::getApplication();
+		$input = method_exists($app, 'getInput') ? $app->getInput() : $app->input;
+		$post = $input->post->getArray();
+		$user = method_exists($app, 'getIdentity') ? $app->getIdentity() : Factory::getUser();
+		$clientId = self::generateRandomString(30);
+		$clientSecret = self::generateRandomString(30);
+		$authorizedUri = trim($post['mo_oauth_client_redirect_url'], " ");
 
-        MoOAuthServerUtility::exportData($tableNames);
-    }
+		// Fields to update.
+		$fields = array(
+		'client_name' => $post['mo_oauth_custom_client_name'],
+		'client_id' => $clientId,
+		'client_secret' => $clientSecret,
+		'authorized_uri' => $authorizedUri,
+		'client_count' => 1
+		);
+
+		// Conditions for which records should be updated.
+		$conditions = array(
+		'id' => 1
+		);
+
+		MoOAuthServerUtility::genericUpdateQuery("#__miniorange_oauthserver_config", $fields, $conditions);
+		MoOAuthServerUtility::pluginEfficiencyCheck($user->get('email'), $post['mo_oauth_custom_client_name'], $authorizedUri, 'Success: OAuth client application saved (client_id / secret generated; redirect URI registered).', 'Admin: Client configuration');
+		$this->setRedirect('index.php?option=com_miniorange_oauthserver&tab-panel=configuration&pa=2', Text::_('COM_MINIORANGE_OAUTHSERVER_CLIENT_ADDED_SUCCESSFULLY'));
+	}
+
+	public function deleteclient()
+	{
+
+		// Fields to update.
+		$fields = array(
+		'client_name' => null,
+		'client_id' => null,
+		'client_secret' => null,
+		'authorized_uri' => null,
+		'client_count' => 0,
+
+		);
+
+		// Conditions for which records should be updated.
+		$conditions = array(
+		'id' => 1
+		);
+		MoOAuthServerUtility::genericUpdateQuery("#__miniorange_oauthserver_config", $fields, $conditions);
+		$app = Factory::getApplication();
+		$user = method_exists($app, 'getIdentity') ? $app->getIdentity() : Factory::getUser();
+		MoOAuthServerUtility::pluginEfficiencyCheck($user->get('email'), '(deleted client)', '', 'Success: OAuth client application removed from Joomla (client_id, secret, and redirect URI cleared).', 'Admin: Client configuration (delete)');
+
+		$this->setRedirect('index.php?option=com_miniorange_oauthserver&tab-panel=configuration', Text::_('COM_MINIORANGE_OAUTHSERVER_CLIENT_DELETE_SUCCESSFULLY'));
+
+	}
+
+
+	public function generateRandomString($length=30)
+	{
+		$characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+		$charactersLength = strlen($characters);
+		$randomString = '';
+
+		for ($i = 0; $i < $length; $i++)
+		{
+			$randomString .= $characters[random_int(0, $charactersLength - 1)];
+		}
+
+		return $randomString;
+	}
+
+	public function updateclient()
+	{
+		$app   = Factory::getApplication();
+		$input = method_exists($app, 'getInput') ? $app->getInput() : $app->input;
+
+		$post = $input->post->getArray();
+		$authorizedUri = trim($post['mo_oauth_client_redirect_url'], " ");
+
+		// Fields to update.
+		$fields = array(
+		'authorized_uri' => $authorizedUri,
+		);
+
+		// Conditions for which records should be updated.
+		$conditions = array(
+		'id' => 1
+		);
+		MoOAuthServerUtility::genericUpdateQuery("#__miniorange_oauthserver_config", $fields, $conditions);
+		$user = method_exists($app, 'getIdentity') ? $app->getIdentity() : Factory::getUser();
+		$cfg = MoOAuthServerUtility::miniOauthFetchDb('#__miniorange_oauthserver_config', array('id' => '1'), 'loadAssoc', '*');
+		$appLabel = isset($cfg['client_name']) ? $cfg['client_name'] : 'OAuth application';
+		MoOAuthServerUtility::pluginEfficiencyCheck($user->get('email'), $appLabel, $authorizedUri, 'Success: OAuth client redirect URI updated in administrator configuration.', 'Admin: Client configuration (update)');
+
+		$this->setRedirect('index.php?option=com_miniorange_oauthserver&tab-panel=configuration&pa=2', Text::_('COM_MINIORANGE_OAUTHSERVER_CLIENT_UPDATE_SUCCESSFULLY'));
+	}
+
+	public function moOAuthContactUs()
+	{
+		$app   = Factory::getApplication();
+		$input = method_exists($app, 'getInput') ? $app->getInput() : $app->input;
+
+		$post = $input->post->getArray();
+
+		$queryEmail = $post['query_email'];
+		$query = $post['query'];
+
+		if (MoOAuthServerUtility::checkEmptyOrNull($queryEmail) || MoOAuthServerUtility::checkEmptyOrNull($query))
+		{
+			$this->setRedirect('index.php?option=com_miniorange_oauthserver&view=accountsetup', Text::_('COM_MINIORANGE_OAUTHSERVER_QUERY_EMAIL_ERROR'), 'error');
+
+			return;
+		}
+		else
+		{
+			if (isset($post['mo_oauthserver_select_plan']))
+			{
+				$query = " <br> [mo_oauthserver_select_plan]:  " . $post['mo_oauthserver_select_plan'] . " <br> [number_of_users]:  " . $post['number_of_users'] . " <br> [Query]: " . $post['query'];
+			}
+
+			$phone = $post['country_code'] . ' ' . $post['query_phone'];
+			$contactUs = new MoOauthServerCustomer;
+			$submited = json_decode($contactUs->submitContactUs($queryEmail, $phone, $query), true);
+
+			if (json_last_error() == JSON_ERROR_NONE)
+			{
+				if (is_array($submited) && array_key_exists('status', $submited) && $submited['status'] == 'ERROR')
+				{
+					$this->setRedirect('index.php?option=com_miniorange_oauthserver&view=accountsetup', $submited['message'], 'error');
+				}
+				else
+				{
+					if ($submited == false)
+					{
+						$this->setRedirect('index.php?option=com_miniorange_oauthserver&view=accountsetup', Text::_('COM_MINIORANGE_OAUTHSERVER_QUERY_ERROR'), 'error');
+					}
+					else
+					{
+						if (isset($post['mo_oauthserver_select_plan']))
+						{
+							$this->setRedirect('index.php?option=com_miniorange_oauthserver&view=accountsetup&tab-panel=requestdemo', Text::_('COM_MINIORANGE_OAUTHSERVER_QUERY_RESPONSE'));
+						}
+						else
+						{
+							$this->setRedirect('index.php?option=com_miniorange_oauthserver&view=accountsetup&tab-panel=requestdemo', Text::_('COM_MINIORANGE_OAUTHSERVER_QUERY_RESPONSE2'));
+						}
+					}
+				}
+			}
+		}
+	}
+
+	public function exportConfiguration()
+	{
+		// Define single or multiple table names here
+		$tableNames = [
+			'#__miniorange_oauthserver_customer',
+			'#__miniorange_oauthserver_config',
+		];
+
+		MoOAuthServerUtility::exportData($tableNames);
+	}
 }

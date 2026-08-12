@@ -3,12 +3,12 @@
  * @package     Joomla.Administrator
  * @subpackage  com_miniorange_oauthserver
  *
-* @author      miniOrange Security Software Pvt. Ltd.
-* @copyright   Copyright (C) 2015 miniOrange (https://www.miniorange.com)
-* @license     GNU General Public License version 3; see LICENSE.txt
-* @contact     joomlasupport@xecurify.com
+ * @author      miniOrange Security Software Pvt. Ltd.
+ * @copyright   Copyright (C) 2015 miniOrange (https://www.miniorange.com)
+ * @license     GNU General Public License version 3; see LICENSE.txt
+ * @contact     info@xecurify.com
  */
- 
+
 // No direct access to this file
 defined('_JEXEC') or die('Restricted access');
 use Joomla\CMS\MVC\Model\AdminModel;
@@ -18,9 +18,9 @@ use Joomla\CMS\MVC\Model\AdminModel;
  *
  * @since  0.0.1
  */
-class miniorangeoauthserverModelAccountSetup extends AdminModel
+class MiniorangeoauthserverModelAccountSetup extends AdminModel
 {
-	
+
 	/**
 	 * Method to get the record form.
 	 *
@@ -31,8 +31,8 @@ class miniorangeoauthserverModelAccountSetup extends AdminModel
 	 *
 	 * @since   1.6
 	 */
-	
-	
+
+
 	public function getForm($data = array(), $loadData = true)
 	{
 		// Get the form.
@@ -44,12 +44,12 @@ class miniorangeoauthserverModelAccountSetup extends AdminModel
 				'load_data' => $loadData
 			)
 		);
- 
+
 		if (empty($form))
 		{
 			return false;
 		}
- 
+
 		return $form;
 	}
 }

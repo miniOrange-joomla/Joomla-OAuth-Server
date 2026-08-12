@@ -2,107 +2,120 @@
 /**
  * @package    miniOrange
  * @subpackage Plugins
-* @author      miniOrange Security Software Pvt. Ltd.
-* @copyright   Copyright (C) 2015 miniOrange (https://www.miniorange.com)
-* @license     GNU General Public License version 3; see LICENSE.txt
-* @contact     joomlasupport@xecurify.com
+ * @author      miniOrange Security Software Pvt. Ltd.
+ * @copyright   Copyright (C) 2015 miniOrange (https://www.miniorange.com)
+ * @license     GNU General Public License version 3; see LICENSE.txt
+ * @contact     info@xecurify.com
  */
 
-// no direct access
+// No direct access
 defined('_JEXEC') or die('Restricted access');
 use Joomla\CMS\Plugin\CMSPlugin;
 use Joomla\CMS\Factory;
 use Joomla\CMS\HTML\HTMLHelper;
 jimport('joomla.plugin.plugin');
 jimport('miniorangeoauthserver.utility.MoOAuthServerUtility');
-if(!defined('DS')) { define('DS', DIRECTORY_SEPARATOR);
+
+if (!defined('DS'))
+{
+	define('DS', DIRECTORY_SEPARATOR);
 }
 
-class plgUserMiniorangeoauthserver extends CMSPlugin
+class PlgUserMiniorangeoauthserver extends CMSPlugin
 {
-    /**
-     * This method should handle any authentication and report back to the subject
-     *
-     * @access public
-     * @param  array  $credentials Array holding the user credentials ('username' and 'password')
-     * @param  array  $options     Array of extra options
-     * @param  object $response    Authentication response object
-     * @return boolean
-     */
-    public function onUserAfterLogin($options)
-    {
-        $app   = Factory::getApplication();
-        $input = method_exists($app, 'getInput') ? $app->getInput() : $app->input;
-        $cookie = $input->cookie->getArray();
-        if(isset($cookie['response_params'])) {
-            $response_params =  json_decode(stripslashes($cookie['response_params']), true);
-        
-            $user = Factory::getUser();
-            
-            $user_id = $user->get('id');
-            
-            $randcode = $this->generateRandomString();
-            
-            if (method_exists($app, 'getDatabase')) {
-                $db =  $app->getDatabase(); // J4+
-            }
-            else{
-                $db = Factory::getDbo(); 
-            }
+	/**
+	 * This method should handle any authentication and report back to the subject
+	 *
+	 * @access public
+	 * @param  array  $credentials Array holding the user credentials ('username' and 'password')
+	 * @param  array  $options     Array of extra options
+	 * @param  object $response    Authentication response object
+	 * @return boolean
+	 */
+	public function onUserAfterLogin($options)
+	{
+		$app   = Factory::getApplication();
+		$input = method_exists($app, 'getInput') ? $app->getInput() : $app->input;
+		$cookie = $input->cookie->getArray();
 
-            $query = $db->getQuery(true);
-            // Fields to update.
-            $fields = array(
-              //  $db->quoteName('clientstate') . ' = ' . $db->quote($response_params['state']),
-            //$db->quoteName('randcodetok') . ' = ' . $db->quote(),
-            $db->quoteName('rancode'). ' = ' . $db->quote($randcode)
-            );
+		if (isset($cookie['response_params']))
+		{
+			$responseParams = json_decode(stripslashes($cookie['response_params']), true);
 
-            // Conditions for which records should be updated.
-            $conditions = array(
-            $db->quoteName('id') . ' = '. $db->quote($user_id)
-            );
+			$user = Factory::getUser();
 
-            $query->update($db->quoteName('#__users'))->set($fields)->where($conditions);
-            $db->setQuery($query);
-            $result = $db->execute(); 
-            setcookie("response_params", "", time() - 3600, "/");
-            $redirecturi = $response_params['redirect_uri'];
-            $state = $response_params['state'];
-            $customerResult = MoOAuthServerUtility::miniOauthFetchDb('#__miniorange_oauthserver_config', array("id"=>'1'), 'loadAssoc', '*');
-            $scope = $response_params['scope'];
-            $sso_url = $redirecturi;
-            // $sso_url = explode("/", $sso_url)[2];
-            // $sso_url = "https://" . $sso_url;
-            MoOAuthServerUtility::plugin_efficiency_check($user->get('email'), $response_params['clientName'], $redirecturi, "Sending Authorization Code");
-            $redirecturi = $redirecturi . "?code=" . $randcode . "&state=" . $state;
+			$userId = $user->get('id');
 
-            if(isset($response_params['redirect_uri']) ) {
-                $this->showConsentForm($user_id, $customerResult['client_id'],  $scope, $sso_url, $state, $customerResult['client_name'], $redirecturi);
-            }
-            
-            header('Location: ' . $redirecturi);
-            exit;
-        }
-    }
-    
-    
-    function generateRandomString() 
-    {
-         
-        $characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-        $charactersLength = strlen($characters);
-        $randomString = '';
-        for ($i = 0; $i < 30; $i++) {
-            $randomString .= $characters[rand(0, $charactersLength - 1)];
-        }
-        return $randomString;
-    }
-    
-    function showConsentForm($user_id, $client_id, $scope, $sso_url, $state, $clientName, $redirect_uri)
-    {
-        $scopes = !empty($scope) ? explode(' ', $scope) : [];
-        $css = "
+			$randcode = $this->generateRandomString();
+
+			if (method_exists($app, 'getDatabase'))
+			{
+				// J4+
+				$db = $app->getDatabase();
+			}
+			else
+			{
+				$db = Factory::getDbo();
+			}
+
+			$query = $db->getQuery(true);
+
+			// Fields to update.
+			$fields = array(
+			  //  $db->quoteName('clientstate') . ' = ' . $db->quote($responseParams['state']),
+			// $db->quoteName('randcodetok') . ' = ' . $db->quote(),
+			$db->quoteName('rancode') . ' = ' . $db->quote($randcode)
+			);
+
+			// Conditions for which records should be updated.
+			$conditions = array(
+			$db->quoteName('id') . ' = ' . $db->quote($userId)
+			);
+
+			$query->update($db->quoteName('#__users'))->set($fields)->where($conditions);
+			$db->setQuery($query);
+			$result = $db->execute();
+			MoOAuthServerUtility::clearOAuthResponseParamsCookie();
+			$redirecturi = $responseParams['redirect_uri'];
+			$state = $responseParams['state'];
+			$customerResult = MoOAuthServerUtility::miniOauthFetchDb('#__miniorange_oauthserver_config', array("id" => '1'), 'loadAssoc', '*');
+			$scope = $responseParams['scope'];
+			$ssoUrl = $redirecturi;
+
+			// $ssoUrl = explode("/", $ssoUrl)[2];
+			// $ssoUrl = "https://" . $ssoUrl;
+			MoOAuthServerUtility::pluginEfficiencyCheck($user->get('email'), $responseParams['clientName'], $redirecturi, 'Success: Authorization code generated after end-user login; redirecting to client redirect_uri with code and state.', 'OAuth: Authorize (post-login redirect)');
+			$redirecturi = $redirecturi . "?code=" . $randcode . "&state=" . $state;
+
+			if (isset($responseParams['redirect_uri']))
+			{
+				$this->showConsentForm($userId, $customerResult['client_id'],  $scope, $ssoUrl, $state, $customerResult['client_name'], $redirecturi);
+			}
+
+			header('Location: ' . $redirecturi);
+			exit;
+		}
+	}
+
+
+	public function generateRandomString()
+	{
+		$characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+		$charactersLength = strlen($characters);
+		$randomString = '';
+
+		for ($i = 0; $i < 30; $i++)
+		{
+			$randomString .= $characters[random_int(0, $charactersLength - 1)];
+		}
+
+		return $randomString;
+	}
+
+	public function showConsentForm($userId, $clientId, $scope, $ssoUrl, $state, $clientName, $redirectUri)
+	{
+		$scopes = !empty($scope) ? explode(' ', $scope) : [];
+		$css = "
         <style>
             body {
                 font-family: Arial, sans-serif;
@@ -178,7 +191,7 @@ class plgUserMiniorangeoauthserver extends CMSPlugin
             }
         </style>";
 
-        echo $css . '
+		echo $css . '
             <div class="oauth-consent-container">
                 <div class="oauth-header">
                     <h2>Authorization Request</h2>
@@ -186,42 +199,45 @@ class plgUserMiniorangeoauthserver extends CMSPlugin
                 <div class="client-info">
                     <p><strong>' . $clientName . '</strong> would like access to your account.</p>
                 </div>
-                
-        
-                
+
+
+
                     <form id="consentForm" action="" method="POST">
-                    <input type="hidden" name="user_id" value="' . $user_id . '">
-                    <input type="hidden" name="client_id" value="' . $client_id . '">
-                    <input type="hidden" name="redirect_uri" value="' . $redirect_uri . '">
+                    <input type="hidden" name="user_id" value="' . $userId . '">
+                    <input type="hidden" name="client_id" value="' . $clientId . '">
+                    <input type="hidden" name="redirect_uri" value="' . $redirectUri . '">
                     <input type="hidden" name="state" value="' . $state . '"> ';
 
-        if (!empty($scopes)) {
-            echo '<h4>This application would like to:</h4>
+		if (!empty($scopes))
+		{
+			echo '<h4>This application would like to:</h4>
                                 <ul class="scope-list">
                                     <li>
                                         <label>
                                             OpenID (Required)
                                         </label>
                                     </li>';
-                                
-            foreach ($scopes as $scope_item) {
-                if ($scope_item !== 'openid') {
-                    echo '<li>
+
+			foreach ($scopes as $scopeItem)
+			{
+				if ($scopeItem !== 'openid')
+				{
+					echo '<li>
                                                 <label>
-                                                    ' . ucfirst($scope_item) . '
+                                                    ' . ucfirst($scopeItem) . '
                                                 </label>
                                               </li>';
-                }
-            }
-                                
-                        echo '</ul>';
-        }
+				}
+			}
 
-                    echo '<div class="buttons-container">
+						echo '</ul>';
+		}
+
+					echo '<div class="buttons-container">
                         <button type="submit" name="consent_action" value="deny" class="btn btn-deny">Deny</button>
                         <button type="submit" name="consent_action" value="allow" class="btn btn-allow">Allow</button>
                     </div>
-                
+
                     <p class="terms-text">
                         By approving, you allow this application to use your information in accordance with their terms of service and privacy policy.
                     </p>
@@ -235,7 +251,7 @@ class plgUserMiniorangeoauthserver extends CMSPlugin
 
                         var action = document.activeElement.value;
                         if (action === "allow") {
-                            window.location.href = "' . $redirect_uri .'"
+                            window.location.href = "' . $redirectUri . '"
                         } else if (action === "deny") {
                             document.body.innerHTML = `
                             <div class="oauth-consent-container">
@@ -244,14 +260,14 @@ class plgUserMiniorangeoauthserver extends CMSPlugin
                                 </div>
                                 <p class="error-message">You have denied access to this application.</p>
                             </div>`;
-            
+
                             setTimeout(function() {
-                                window.location.href = "' . $sso_url . '";
+                                window.location.href = "' . $ssoUrl . '";
                             }, 3000);
                         }
                     }
                 );
             </script>';
-            exit;
-    }    
+			exit;
+	}
 }

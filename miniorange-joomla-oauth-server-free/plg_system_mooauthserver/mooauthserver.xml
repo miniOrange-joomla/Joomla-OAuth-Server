@@ -7,11 +7,12 @@
     <copyright>Copyright (C) 2015 miniOrange. All rights reserved.</copyright>
     <license>GNU General Public License version 3; see LICENSE.txt</license>
 	<creationDate>Nov 2018</creationDate>
-	<version>5.1.0</version>
+	<version>5.1.5</version>
 	<description>PLG_SYSTEM_MINIORANGEOAUTH_XML_DESCRIPTION</description>
 	<files>
 		<filename plugin="mooauthserver">mooauthserver.php</filename>
 	</files>
+    <scriptfile>my_script.php</scriptfile>
 	<languages folder="language">
 		<language tag="en-GB">en-GB/en-GB.plg_system_mooauthserver.ini</language>
 		<language tag="en-GB">en-GB/en-GB.plg_system_mooauthserver.sys.ini</language>

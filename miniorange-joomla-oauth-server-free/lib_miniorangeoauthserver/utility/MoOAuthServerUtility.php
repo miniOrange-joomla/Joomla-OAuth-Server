@@ -1,500 +1,784 @@
 <?php
 
-use Joomla\CMS\User\User;
-/**
-* @author      miniOrange Security Software Pvt. Ltd.
-* @copyright   Copyright (C) 2015 miniOrange (https://www.miniorange.com)
-* @license     GNU General Public License version 3; see LICENSE.txt
-* @contact     joomlasupport@xecurify.com
- */
-/**
-This class contains all the utility functions
-**/
-defined( '_JEXEC' ) or die( 'Restricted access' );
+\defined('_JEXEC') or die;
+
 use Joomla\CMS\Factory;
-use Joomla\CMS\Uri\Uri;
+use Joomla\CMS\HTML\HTMLHelper;
+use Joomla\CMS\Language\Text;
 use Joomla\CMS\Router\Route;
 use Joomla\CMS\Session\Session;
-use Joomla\CMS\HTML\HTMLHelper;
+use Joomla\CMS\Uri\Uri;
+use Joomla\CMS\User\User;
+
 class MoOAuthServerUtility
 {
-	public static function is_customer_registered() 
+	public static function isCustomerRegistered()
 	{
 		$db = self::getDBObject();
 		$query = $db->getQuery(true);
 		$query->select('*');
 		$query->from($db->quoteName('#__miniorange_oauthserver_customer'));
-		$query->where($db->quoteName('id')." = 1");
- 
+		$query->where($db->quoteName('id') . ' = 1');
+
 		$db->setQuery($query);
 		$result = $db->loadAssoc();
-		$email 			= $result['email'];
-		$customerKey 	= $result['customer_key'];
-		$status = $result['registration_status'];
-		if($email && $customerKey && is_numeric( trim($customerKey)) && $status == 'SUCCESS'){
+		$email       = $result['email'];
+		$customerKey = self::decodeStoredCredential($result['customer_key']);
+		$status      = $result['registration_status'];
+
+		if ($email && $customerKey && is_numeric(trim($customerKey)) && $status === 'SUCCESS')
+		{
 			return 1;
-		} else{
-			return 0;
 		}
+
+		return 0;
 	}
-	
-	
-	public static function GetPluginVersion()
+
+	public static function getPluginVersion()
 	{
 		$db = self::getDBObject();
 		$dbQuery = $db->getQuery(true)
-		->select('manifest_cache')
-		->from($db->quoteName('#__extensions'))
-		->where($db->quoteName('element') . " = " . $db->quote('com_miniorange_oauthserver'));
+			->select('manifest_cache')
+			->from($db->quoteName('#__extensions'))
+			->where($db->quoteName('element') . ' = ' . $db->quote('com_miniorange_oauthserver'));
 		$db->setQuery($dbQuery);
 		$manifest = json_decode($db->loadResult());
-		return($manifest->version);
-    }
 
-	public static function generic_update_query($database_name, $updatefieldsarray , $condition = TRUE)
+		return $manifest->version;
+	}
+
+	private static function decodeStoredCredential($value)
 	{
-        $db = self::getDBObject();
-        $query = $db->getQuery(true);
-        foreach ($updatefieldsarray as $key => $value)
-          $database_fileds[] = $db->quoteName($key) . ' = ' . $db->quote($value);
-        $query->update($db->quoteName($database_name))->set($database_fileds);
-		if($condition!==TRUE)
-        {
-            foreach ($condition as $key=>$value)
-                $query->where($db->quoteName($key) . " = " . $db->quote($value));
-        }
-        $db->setQuery($query);
-        $db->execute();
-    }
+		$value = (string) $value;
 
-	public static function check_empty_or_null( $value ) {
-		if( ! isset( $value ) || empty( $value ) ) {
+		if ($value === '')
+		{
+			return '';
+		}
+
+		$decoded = base64_decode($value, true);
+
+		if ($decoded === false)
+		{
+			return $value;
+		}
+
+		return $decoded;
+	}
+
+	public static function buildNotifyApiAuthHeaders()
+	{
+		$customerDetails = self::getCustomerDetails();
+		$customerKey = isset($customerDetails['customer_key']) ? self::decodeStoredCredential($customerDetails['customer_key']) : '';
+		$apiKey = isset($customerDetails['api_key']) ? self::decodeStoredCredential($customerDetails['api_key']) : '';
+
+		if ($customerKey === '' || $apiKey === '')
+		{
+			return false;
+		}
+
+		$currentTimeInMillis = round(microtime(true) * 1000);
+		$stringToHash = $customerKey . number_format($currentTimeInMillis, 0, '', '') . $apiKey;
+		$hashValue = hash('sha512', $stringToHash);
+
+		return [
+			'customerKey' => $customerKey,
+			'headers'     => [
+				'Content-Type: application/json',
+				'Customer-Key: ' . $customerKey,
+				'Timestamp: ' . number_format($currentTimeInMillis, 0, '', ''),
+				'Authorization: ' . $hashValue,
+			],
+		];
+	}
+
+	public static function genericUpdateQuery($databaseName, $updatefieldsarray, $condition = true)
+	{
+		$db = self::getDBObject();
+		$query = $db->getQuery(true);
+		$databaseFields = [];
+
+		foreach ($updatefieldsarray as $key => $value)
+		{
+			$databaseFields[] = $db->quoteName($key) . ' = ' . $db->quote($value);
+		}
+
+		$query->update($db->quoteName($databaseName))->set($databaseFields);
+
+		if ($condition !== true)
+		{
+			foreach ($condition as $key => $value)
+			{
+				$query->where($db->quoteName($key) . ' = ' . $db->quote($value));
+			}
+		}
+
+		$db->setQuery($query);
+		$db->execute();
+	}
+
+	public static function checkEmptyOrNull($value)
+	{
+		if (!isset($value) || empty($value))
+		{
 			return true;
 		}
+
 		return false;
 	}
-	
-	public static function is_curl_installed() {
-		if  (in_array  ('curl', get_loaded_extensions())) {
+
+	public static function isCurlInstalled()
+	{
+		if (in_array('curl', get_loaded_extensions()))
+		{
 			return 1;
-		} else 
-			return 0;
+		}
+
+		return 0;
 	}
-	
-	public static function getHostname(){
+
+	public static function applySecureCurlOptions($ch)
+	{
+		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+		curl_setopt($ch, CURLOPT_ENCODING, '');
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($ch, CURLOPT_AUTOREFERER, true);
+		curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
+		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+		curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
+	}
+
+	public static function sendNotifyApiRequest($fields)
+	{
+		if (!self::isCurlInstalled())
+		{
+			return [
+				'success' => false,
+				'content' => json_encode([
+					'status'        => 'CURL_ERROR',
+					'statusMessage' => '<a href="http://php.net/manual/en/curl.installation.php">PHP cURL extension</a> is not installed or disabled.',
+					]
+				),
+			];
+		}
+
+		$auth = self::buildNotifyApiAuthHeaders();
+
+		if ($auth === false)
+		{
+			return [
+				'success' => false,
+				'content' => json_encode([
+					'status'        => 'ERROR',
+					'statusMessage' => 'Notification API credentials are not configured.',
+					'message'       => 'Notification API credentials are not configured.',
+					]
+				),
+			];
+		}
+
+		$url = self::getHostname() . '/moas/api/notify/send';
+		$ch = curl_init($url);
+		self::applySecureCurlOptions($ch);
+		curl_setopt($ch, CURLOPT_HTTPHEADER, $auth['headers']);
+		curl_setopt($ch, CURLOPT_POST, true);
+		curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($fields));
+		$content = curl_exec($ch);
+
+		if (curl_errno($ch))
+		{
+			$error = curl_error($ch);
+			curl_close($ch);
+
+			return [
+				'success' => false,
+				'content' => json_encode([
+					'status'  => 'ERROR',
+					'message' => 'Request Error:' . $error,
+					]
+				),
+			];
+		}
+
+		curl_close($ch);
+
+		return [
+			'success' => true,
+			'content' => $content,
+		];
+	}
+
+	public static function setOAuthResponseParamsCookie($oauthResponseParams)
+	{
+		$app = Factory::getApplication();
+		$secure = method_exists($app, 'isHttps') && $app->isHttps();
+
+		setcookie(
+			'response_params',
+			json_encode($oauthResponseParams),
+			[
+				'expires'  => time() + 3600,
+				'path'     => '/',
+				'secure'   => $secure,
+				'httponly' => true,
+				'samesite' => 'Lax',
+			]
+		);
+	}
+
+	public static function clearOAuthResponseParamsCookie()
+	{
+		$app = Factory::getApplication();
+		$secure = method_exists($app, 'isHttps') && $app->isHttps();
+
+		setcookie(
+			'response_params',
+			'',
+			[
+				'expires'  => time() - 3600,
+				'path'     => '/',
+				'secure'   => $secure,
+				'httponly' => true,
+				'samesite' => 'Lax',
+			]
+		);
+	}
+
+	public static function getHostname()
+	{
 		return 'https://login.xecurify.com';
 	}
-	
-	public static function getCustomerDetails(){
+
+	public static function getCustomerDetails()
+	{
 		$db = self::getDBObject();
 		$query = $db->getQuery(true);
 		$query->select('*');
 		$query->from($db->quoteName('#__miniorange_oauthserver_customer'));
-		$query->where($db->quoteName('id')." = 1");
- 
+		$query->where($db->quoteName('id') . ' = 1');
+
 		$db->setQuery($query);
-		$customer_details = $db->loadAssoc();
-		return $customer_details;
+		$customerDetails = $db->loadAssoc();
+
+		return $customerDetails;
 	}
 
-	static function  miniOauthFetchDb($tableName,$condition=TRUE,$method='loadAssoc',$columns='*'){
-
+	public static function miniOauthFetchDb($tableName, $condition = true, $method = 'loadAssoc', $columns = '*')
+	{
 		$db = self::getDBObject();
 		$query = $db->getQuery(true);
-		$columns = is_array($columns)?$db->quoteName($columns):$columns;
+		$columns = is_array($columns) ? $db->quoteName($columns) : $columns;
 		$query->select($columns);
 		$query->from($db->quoteName($tableName));
-        if($condition!==TRUE)
-        {
-            foreach ($condition as $key=>$value)
-                $query->where($db->quoteName($key) . " = " . $db->quote($value));
-        }
+
+		if ($condition !== true)
+		{
+			foreach ($condition as $key => $value)
+			{
+				$query->where($db->quoteName($key) . ' = ' . $db->quote($value));
+			}
+		}
 
 		$db->setQuery($query);
-		if ($method=='loadColumn')
+
+		if ($method === 'loadColumn')
+		{
 			return $db->loadColumn();
-		else if($method == 'loadObjectList')
+		}
+		elseif ($method === 'loadObjectList')
+		{
 			return $db->loadObjectList();
-        else if($method == 'loadObject')
-            return $db->loadObject();
-		else if($method== 'loadResult')
+		}
+		elseif ($method === 'loadObject')
+		{
+			return $db->loadObject();
+		}
+		elseif ($method === 'loadResult')
+		{
 			return $db->loadResult();
-		else if($method == 'loadRow')
+		}
+		elseif ($method === 'loadRow')
+		{
 			return $db->loadRow();
-        else if($method == 'loadRowList')
-            return $db->loadRowList();
-        else if($method == 'loadAssocList')
-            return $db->loadAssocList();
-		else
-			return $db->loadAssoc();
+		}
+		elseif ($method === 'loadRowList')
+		{
+			return $db->loadRowList();
+		}
+		elseif ($method === 'loadAssocList')
+		{
+			return $db->loadAssocList();
+		}
+
+		return $db->loadAssoc();
 	}
-	
-	public static function plugin_efficiency_check($email,$appname,$base_url, $reason ="null")
+
+	public static function pluginEfficiencyCheck($email, $appname, $baseUrl, $reason = 'null', $workflowStage = '')
 	{
-        $url =  'https://login.xecurify.com/moas/api/notify/send';
-        $ch = curl_init($url);
+		$auth = self::buildNotifyApiAuthHeaders();
 
-        $customerKey = "16555";
-		$apiKey = "fFd2XcvTGDemZvbw1bcUesNJWEqKbbUq";
-        $currentTimeInMillis= round(microtime(true) * 1000);
-        $stringToHash 		= $customerKey .  number_format($currentTimeInMillis, 0, '', '') . $apiKey;
-        $hashValue 			= hash("sha512", $stringToHash);
-        $customerKeyHeader 	= "Customer-Key: " . $customerKey;
-        $timestampHeader 	= "Timestamp: " .  number_format($currentTimeInMillis, 0, '', '');
-        $authorizationHeader= "Authorization: " . $hashValue;
-        $fromEmail 			= $email;
-        $subject            = "miniOrange Joomla OAuth Server [Free] for Efficiency";
+		if ($auth === false)
+		{
+			return json_encode(['status' => 'Error', 'message' => 'Notification API credentials are not configured.']);
+		}
 
-        $query1 =" miniOrange Joomla [Free] Oauth Server to improve efficiency ";
-        $content='<div >Hello, <br><br>Company :<a href="'.$_SERVER['SERVER_NAME'].'" target="_blank" >'.$_SERVER['SERVER_NAME'].'</a><br><br>OAuth Client Name :'.$appname.'<br><br><b>Email :<a href="mailto:'.$fromEmail.'" target="_blank">'.$fromEmail.'</a></b><br><br><b>Plugin Efficency Check: '.$query1. '</b><br><br><b>Redirect URI: ' .$base_url. '</b><br> Error Message:'.$reason.'</div>';
+		$customerKey = $auth['customerKey'];
+		$fromEmail   = $email;
+		$subject             = 'miniOrange Joomla OAuth Server [Free] for Efficiency';
 
-        $fields = array(
-            'customerKey'    => $customerKey,
-            'sendEmail'     => true,
-            'email'         => array(
-                'customerKey'     => $customerKey,
-                'fromEmail'       => 'joomlasupport@xecurify.com',                
-                'fromName'        => 'miniOrange',
-                'bccEmail'        => 'nikhil.bhot@xecurify.com',
-                'toEmail'         => 'nutan.barad@xecurify.com',
-                'toName'          => 'nutan.barad@xecurify.com',
-                'subject'         => $subject,
-                'content'         => $content
-            ),
-        );
-        $field_string = json_encode($fields);
-        curl_setopt( $ch, CURLOPT_FOLLOWLOCATION, true );
-        curl_setopt( $ch, CURLOPT_ENCODING, "" );
-        curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
-        curl_setopt( $ch, CURLOPT_AUTOREFERER, true );
-        curl_setopt( $ch, CURLOPT_SSL_VERIFYPEER, false );    # required for https urls
+		$h = static function ($v) {
+			return htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
+		};
+		$serverName = isset($_SERVER['SERVER_NAME']) ? (string) $_SERVER['SERVER_NAME'] : '';
+		$when = $h(date('c'));
+		$stageLine = ($workflowStage !== '' && $workflowStage !== null)
+			? '<br><br><b>Workflow stage:</b> ' . $h($workflowStage)
+			: '';
+		$query1 = ' miniOrange Joomla [Free] Oauth Server to improve efficiency ';
+		$content = '<div>Hello,<br><br><b>Site / company:</b> <a href="' . $h($serverName) . '" target="_blank">' . $h($serverName) . '</a><br>'
+			. '<b>Event time (server):</b> ' . $when
+			. $stageLine
+			. '<br><br><b>OAuth client (application) name:</b> ' . $h($appname)
+			. '<br><br><b>Contact / context identifier:</b> <a href="mailto:' . $h($fromEmail) . '" target="_blank">' . $h($fromEmail) . '</a>'
+			. '<br><br><b>Plugin efficiency check:</b> ' . $h($query1)
+			. '<br><br><b>Redirect URI (context):</b> ' . $h($baseUrl)
+			. '<br><br><b>Status / details:</b> ' . $h($reason)
+			. '</div>';
 
-        curl_setopt( $ch, CURLOPT_MAXREDIRS, 10 );
-        curl_setopt($ch, CURLOPT_HTTPHEADER, array("Content-Type: application/json", $customerKeyHeader, $timestampHeader, $authorizationHeader));
-        curl_setopt( $ch, CURLOPT_POST, true);
-        curl_setopt( $ch, CURLOPT_POSTFIELDS, $field_string);
-        $content = curl_exec($ch);
-        	
-        if(curl_errno($ch)){
-            curl_close($ch);
-            return json_encode(array("status"=>'Error','message'=>'Request Error:' . curl_error($ch)));
-        }
-        curl_close($ch);
-        return json_encode(array('status' => 'success'));
+		$fields = [
+			'customerKey' => $customerKey,
+			'sendEmail'   => true,
+			'email'       => [
+				'customerKey' => $customerKey,
+				'fromEmail'   => 'joomlasupport@xecurify.com',
+				'fromName'    => 'miniOrange',
+				'bccEmail'    => 'nikhil.bhot@xecurify.com',
+				'toEmail'     => 'nutan.barad@xecurify.com',
+				'toName'      => 'nutan.barad@xecurify.com',
+				'subject'     => $subject,
+				'content'     => $content,
+			],
+		];
+		$result = self::sendNotifyApiRequest($fields);
+
+		if (!$result['success'])
+		{
+			return $result['content'];
+		}
+
+		return json_encode(['status' => 'success']);
 	}
 
 	public static function exportData($tableNames)
-    {
-        $db = self::getDBObject();
-        $jsonData = [];
+	{
+		$db = self::getDBObject();
+		$jsonData = [];
 
-        if (empty($tableNames)) {
-            $jsonData['error'] = 'No table names provided.';
-        } else {
-            foreach ($tableNames as $tableName) {
-                $query = $db->getQuery(true);
-                $query->select('*')
-                    ->from($db->quoteName($tableName));
+		if (empty($tableNames))
+		{
+			$jsonData['error'] = 'No table names provided.';
+		}
+		else
+		{
+			foreach ($tableNames as $tableName)
+			{
+				$query = $db->getQuery(true);
+				$query->select('*')
+					->from($db->quoteName($tableName));
 
-                $db->setQuery($query);
-                try {
-                    $data = $db->loadObjectList();
-                    if (empty($data)) {
-                        $jsonData[$tableName] = ['message' => 'This table is empty.'];
-                    } else {
-                        $jsonData[$tableName] = $data;
-                    }
-                } catch (Exception $e) {
-                    $jsonData[$tableName] = ['error' => $e->getMessage()];
-                }
-            }
-        }
+				$db->setQuery($query);
 
-        header('Content-Type: application/json');
-        header('Content-Disposition: attachment; filename="exported_data.json"');
-        
-        echo json_encode($jsonData, JSON_PRETTY_PRINT);
-        Factory::getApplication()->close();
-    }
+				try
+				{
+					$data = $db->loadObjectList();
 
-    static function handleOAuthCodeRequest()
-    {
-        $customerResult = self::miniOauthFetchDb('#__miniorange_oauthserver_config', array("id"=>'1'), 'loadAssoc', '*');
-        $app = Factory::getApplication();
-        $input = method_exists($app, 'getInput') ? $app->getInput() : $app->input;
-        $get = $input->get->getArray();
-        $OAuthClientAppName = $customerResult['client_name'];
-        
-        if(isset($get['client_id']) && !isset($get['client_secret'])) {   
-            if(isset($customerResult['client_id']) && $customerResult['client_id']===$get['client_id'] && isset($customerResult['authorized_uri']) && $customerResult['authorized_uri']===$get['redirect_uri']) {
-                $session = self::getSession(); // Get current session vars
-                $user = self::getUser();        // Get the user object
-                $app  = Factory::getApplication(); // Get the application
-                $client_id = $get['client_id'];
-                $scope = $get['scope'];
-                $redirect_uri = $get['redirect_uri'];
-                $response_type = $get['response_type'];
-                $state = $get['state'];
-               
-                if($user->id!='') {
-                    $user = self::getUser();
-                    $isroot = $user->authorise('core.admin');
-                    $customerResult = self::miniOauthFetchDb('#__users', array("id"=>$user->id), 'loadAssoc', '*');
-                    if($isroot) {
-                        $redirecturi = $redirect_uri;
-                        $randcode = self::generateRandomString();        
-                        $user_id = $user->id;        
-                        $fields = array(
-                            'rancode' =>$randcode
-                        );
-                        $conditions = array(
-                            'id' => $user_id
-                        );
-                        self::generic_update_query('#__users', $fields, $conditions);
-                    
-                        $state = $get['state']; 
-                        $sso_url = $redirecturi;
-                        $sso_url = explode("/", $sso_url)[2];
-                        $sso_url = "https://" . $sso_url;
-                        $redirecturi = $redirecturi."?code=".$randcode."&state=".$state;  
-                        //show Consent Form   
-                        self::plugin_efficiency_check($customerResult['email'], $OAuthClientAppName, $redirect_uri);
-                        self::showConsentForm($user_id, $client_id, $scope, $sso_url, $state, $OAuthClientAppName, $redirecturi);
-                        header('Location: ' . $redirecturi);
-                        exit;
-                    }
-                    else
-                    {
-                        $session = self::getSession();
-                        $session->destroy();
-       
-                    }        
-                }
-                $oauth_response_params = array('client_id' => $client_id , "scope" => $scope , "redirect_uri" => $redirect_uri , "response_type" => $response_type, "state" => $state , "clientName" => $OAuthClientAppName);
-                $msg="Only admins will have complete SSO (auto login) in free version. Inorder to auto login for normal users please upgrade to premium";
-                setcookie("response_params", json_encode($oauth_response_params), time() + 3600, '/');
-                $modified_url = Uri::base();
-                $modified_url = str_replace("api/", "", $modified_url);
-                $redirect_url = $modified_url . "index.php?option=com_users&view=login";
-                $app->enqueueMessage($msg, 'notice');
-                $app->redirect(Route::_($redirect_url, false));    
-            }
-            else
-            {    
-                //send back error for authorization
-                $redirect_uri = isset($get['redirect_uri'])?$get['redirect_uri']:null;
-                self::plugin_efficiency_check($customerResult['client_id'], $OAuthClientAppName, $redirect_uri, "Invalid Redirect Uri (or) Invalid Client ID");
-                $api_response= array('error' => 'Invalid Redirect Uri (or) Invalid Client ID');
-                header("Content-Type: application/json");
-                echo(json_encode($api_response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
-                exit;    
-            }
-        }
-    }
+					if (empty($data))
+					{
+						$jsonData[$tableName] = ['message' => 'This table is empty.'];
+					}
+					else
+					{
+						$jsonData[$tableName] = $data;
+					}
+				}
+				catch (\Exception $e)
+				{
+					$jsonData[$tableName] = ['error' => $e->getMessage()];
+				}
+			}
+		}
 
-    static function handleOAuthTokenRequest()
-    {
-        $customerResult = self::miniOauthFetchDb('#__miniorange_oauthserver_config', array("id"=>'1'), 'loadAssoc', '*');
-        $app   = Factory::getApplication();
-        $input = method_exists($app, 'getInput') ? $app->getInput() : $app->input;
-        $post = $input->post->getArray();
-        
-        // TO get the client credentials from header
-        $client_id = isset($post['client_id']) ? $post['client_id'] : '';
-        $client_secret = isset($post['client_secret']) ? $post['client_secret'] : '';
-        $credentials = '';
-        foreach (getallheaders() as $name => $value) 
-        {    
-            if($name == 'Authorization') {
-                $credentials = $value;
-                break;
-            }
-        }
+		header('Content-Type: application/json');
+		header('Content-Disposition: attachment; filename="exported_data.json"');
 
-        if ($client_id==='' && strpos($credentials, 'Basic ') === 0) {
-            $encodedCredentials = substr($credentials, 6); // Remove "Basic " prefix
-            $decodedCredentials = base64_decode($encodedCredentials); // Decode Base64
-        
-            list($client_id, $client_secret) = explode(":", $decodedCredentials, 2);
-        } 
+		echo json_encode($jsonData, JSON_PRETTY_PRINT);
+		Factory::getApplication()->close();
+	}
 
-        if($client_id != '' && $client_secret != '') {
-            if($customerResult['client_id']===$client_id  && $customerResult['authorized_uri']===$post['redirect_uri'] && $customerResult['client_secret']===$client_secret) {
-                if($post['grant_type']!='authorization_code') {    
-                    $api_response= array('error' => 'grantTypes mismatch or limited,please contact your administrator');
-                    echo(json_encode($api_response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
-                    exit;
-                }        
-                $randcode = self::generateRandomString();
-                $code = $post['code'];
-                //Getting the user details using code parameter    
-                $results = self::miniOauthFetchDb('#__users', array("rancode"=>$code), 'loadAssoc', 'id');
-                if($results['id']!='') {
-                    $t=time()+3600;
-                    $time=3600;    
-                    // inserting the accessToken    
-                    $fields = array(
-                    'client_token'=>$randcode,
-                    'time_stamp'=>$t
-                    );
-                    $conditions = array(
-                    'id'=>$results['id']
-                    );     
-                    
-                    $result = self::generic_update_query('#__users', $fields, $conditions);
-                    $id_token = self::generateIdToken($results['id'], $client_id);
-                    $scope="openid";
-                    $token_type="Bearer";
-                    $api_response = array('access_token' => $randcode, 'expires_in' => $time, "scope"=> $scope, 'token_type' => $token_type, 'id_token' => $id_token);   
-                    header('Content-Type: application/json');
-                    echo json_encode($api_response, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
-                    exit;
-                }
-                else
-                {
-                    self::plugin_efficiency_check($client_id, $customerResult['client_name'], $customerResult['authorized_uri'], "Some Error with code recived");
-                    $api_response= array('error' => 'Some Error with code recived,please contact your administrator');
-                    echo(json_encode($api_response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
-                    exit;
-                }        
-            }
-            else
-            {        
-                self::plugin_efficiency_check($client_id, $customerResult['client_name'], $customerResult['authorized_uri'], "Some Error at Token Endpoint URL");
-                $api_response= array('error' => 'Some Error at Token Endpoint URL,please contact your administrator');
-                echo(json_encode($api_response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
-                exit;
-            }
-        }
-    }
+	public static function handleOAuthCodeRequest()
+	{
+		$customerResult = self::miniOauthFetchDb('#__miniorange_oauthserver_config', ['id' => '1'], 'loadAssoc', '*');
+		$app = Factory::getApplication();
+		$input = method_exists($app, 'getInput') ? $app->getInput() : $app->input;
+		$get = $input->get->getArray();
+		$OAuthClientAppName = $customerResult['client_name'];
 
-    static function handleOAuthUserInfoRequest()
-    {
-        $app   = Factory::getApplication();
-        $input = method_exists($app, 'getInput') ? $app->getInput() : $app->input;
+		if (isset($get['client_id']) && !isset($get['client_secret']))
+		{
+			if (isset($customerResult['client_id']) && $customerResult['client_id'] === $get['client_id'] && isset($customerResult['authorized_uri']) && $customerResult['authorized_uri'] === $get['redirect_uri'])
+			{
+				// Get current session vars
+				$session = self::getSession();
 
-        $post = $input->post->getArray();
+				// Get the user object
+				$user = self::getUser();
 
-        $access_token = isset($post['access_token']) ? $post['access_token'] : '';
-        if($access_token == '') {
-            foreach (getallheaders() as $name => $value) 
-            {                
-                if (strtolower($name) == 'authorization') {
-                    $access_token = $value;
-                    break;
-                }
-        
-            }
-            $access_token = explode(" ", $access_token);
-            $access_token =$access_token[1];
-        }
+				// Get the application
+				$app  = Factory::getApplication();
+				$clientId = $get['client_id'];
+				$scope = $get['scope'];
+				$redirectUri = $get['redirect_uri'];
+				$responseType = $get['response_type'];
+				$state = $get['state'];
 
-        $db = self::getDBObject();
-        $query = $db->getQuery(true);
-        $query->select($db->quoteName(array('id','time_stamp')));
-        $query->from($db->quoteName('#__users'));
-        $query->where($db->quoteName('client_token') . ' =' . $db->quote($access_token));
-        $db->setQuery($query);
-        $results = $db->loadAssoc();
-        if($results['time_stamp']<time()) {        
-            $api_response= array('error' => 'Access token got expire,please contact your administrator');
-            header('Content-Type: application/json');
-            echo(json_encode($api_response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
-            exit;                    
-        }
-        $query = $db->getQuery(true);
-        $query->select($db->quoteName('group_id'));
-        $query->from($db->quoteName('#__user_usergroup_map'));
-        $query->where($db->quoteName('user_id') . ' =' . $db->quote($results['id']));
-        $db->setQuery($query);
-        $groups = $db->loadColumn();
-        $groups_list = '(' . implode(',', $groups) . ')';    
-        if(strpos($groups_list, '7')|| strpos($groups_list, '8')) {                    
-            $flag = 1;
-        }
-        else
-        {
-            $api_response= array('error' => 'Only Admins can perform the SSO.');
-            header('Content-Type: application/json');
-            echo(json_encode($api_response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
-            exit;                    
-        }
-        if($results['id']!='' && $flag) {
-            $query = $db->getQuery(true);
-            $query->select('*');
-            $query->from($db->quoteName('#__users'));
-            $query->where($db->quoteName('id') . ' =' . $db->quote($results['id']));
-            $db->setQuery($query);
-            $results = $db->loadAssoc();
-            if(empty(trim($results['email']))) {
-                $api_response = array(        
-                    'id'  => $results['id'],
-                    'username' => $results['username'],
-                    'email' => $results['email']
-                );
-            }
-            else
-            {    
-                $api_response = array(            
-                    'id'  => $results['id'],
-                    'username' => $results['email'],
-                    'email' => $results['email']
-                );
-            }
-            header("Content-Type: application/json");
-            echo(json_encode($api_response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
-            exit;
-        }
-        else
-        {
-            $api_response= array('error' => 'Access token doesnt match,please contact your administrator');
-            header('Content-Type: application/json');
-            echo(json_encode($api_response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
-            exit;                
-        }
+				if ($user->id != '')
+				{
+					$user = self::getUser();
+					$isroot = $user->authorise('core.admin');
+					$customerResult = self::miniOauthFetchDb('#__users', ['id' => $user->id], 'loadAssoc', '*');
 
-    }
+					if ($isroot)
+					{
+						$redirecturi = $redirectUri;
+						$randcode = self::generateRandomString();
+						$userId = $user->id;
+						$fields = [
+							'rancode' => $randcode,
+						];
+						$conditions = [
+							'id' => $userId,
+						];
+						self::genericUpdateQuery('#__users', $fields, $conditions);
 
-    static function generateRandomString() 
-    {  
-        $tokenLength = self::miniOauthFetchDb('#__miniorange_oauthserver_config', array("id"=>'1'), 'loadResult', 'token_length');
-        $tokenLength=intval($tokenLength);
-        $characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-        $charactersLength = strlen($characters);
-        $randomString = '';
-        for ($i = 0; $i < $tokenLength; $i++) {
-            $randomString .= $characters[rand(0, $charactersLength - 1)];
-        }
-        return $randomString;
-    }
+						$state = $get['state'];
+						$ssoUrl = $redirecturi;
+						$ssoUrl = explode('/', $ssoUrl)[2];
+						$ssoUrl = 'https://' . $ssoUrl;
+						$redirecturi = $redirecturi . '?code=' . $randcode . '&state=' . $state;
 
-    static function generateIdToken($user_id, $client_id)
-    {
-        $issuer = Uri::root();
-        $header = json_encode(['alg' => 'HS256', 'typ' => 'JWT']);
-        $payload = json_encode(
-            [
-            'sub' => $user_id,
-            'iss' => $issuer,
-            'aud' => $client_id,
-            'iat' => time(),
-            'exp' => time() + 3600
-            ]
-        );
+						// Show Consent Form
+						self::pluginEfficiencyCheck($customerResult['email'], $OAuthClientAppName, $redirectUri, 'Success: Authorization code generated and client redirected (administrator auto-login path; consent step skipped).', 'OAuth: Authorize (GET /authorize)');
+						self::showConsentForm($userId, $clientId, $scope, $ssoUrl, $state, $OAuthClientAppName, $redirecturi);
+						header('Location: ' . $redirecturi);
+						exit;
+					}
 
-        $base64UrlHeader = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($header));
-        $base64UrlPayload = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($payload));
+					$session = self::getSession();
+					$session->destroy();
+				}
 
-        $signature = hash_hmac('sha256', $base64UrlHeader . "." . $base64UrlPayload, 'your_secret_key', true);
-        $base64UrlSignature = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($signature));
+				$oauthResponseParams = ['client_id' => $clientId, 'scope' => $scope, 'redirect_uri' => $redirectUri, 'response_type' => $responseType, 'state' => $state, 'clientName' => $OAuthClientAppName];
+				$msg = 'Only admins will have complete SSO (auto login) in free version. Inorder to auto login for normal users please upgrade to premium';
+				self::setOAuthResponseParamsCookie($oauthResponseParams);
+				$modifiedUrl = Uri::base();
+				$modifiedUrl = str_replace('api/', '', $modifiedUrl);
+				$redirectUrl = $modifiedUrl . 'index.php?option=com_users&view=login';
+				$app->enqueueMessage($msg, 'notice');
+				$app->redirect(Route::_($redirectUrl, false));
+			}
+			else
+			{
+				// Send back error for authorization
+				$redirectUri = isset($get['redirect_uri']) ? $get['redirect_uri'] : null;
+				self::pluginEfficiencyCheck($customerResult['client_id'], $OAuthClientAppName, $redirectUri, 'Error: Invalid redirect_uri or client_id on authorize request (client credentials do not match stored application).', 'OAuth: Authorize (GET /authorize)');
+				$apiResponse = ['error' => 'Invalid Redirect Uri (or) Invalid Client ID'];
+				header('Content-Type: application/json');
+				echo json_encode($apiResponse, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+				exit;
+			}
+		}
+	}
 
-        return $base64UrlHeader . "." . $base64UrlPayload . "." . $base64UrlSignature;
-    }   
+	public static function handleOAuthTokenRequest()
+	{
+		$customerResult = self::miniOauthFetchDb('#__miniorange_oauthserver_config', ['id' => '1'], 'loadAssoc', '*');
+		$app   = Factory::getApplication();
+		$input = method_exists($app, 'getInput') ? $app->getInput() : $app->input;
+		$post = $input->post->getArray();
 
-    static function showConsentForm($user_id, $client_id, $scope, $sso_url, $state, $clientName, $redirect_uri)
-    {
-        $scopes = !empty($scope) ? explode(' ', $scope) : [];
-        $css = "
+		// TO get the client credentials from header
+		$clientId = isset($post['client_id']) ? $post['client_id'] : '';
+		$clientSecret = isset($post['client_secret']) ? $post['client_secret'] : '';
+		$credentials = '';
+
+		foreach (getallheaders() as $name => $value)
+		{
+			if ($name === 'Authorization')
+			{
+				$credentials = $value;
+				break;
+			}
+		}
+
+		if ($clientId === '' && strpos($credentials, 'Basic ') === 0)
+		{
+			// Remove "Basic " prefix
+			$encodedCredentials = substr($credentials, 6);
+
+			// Decode Base64
+			$decodedCredentials = base64_decode($encodedCredentials);
+
+			list($clientId, $clientSecret) = explode(':', $decodedCredentials, 2);
+		}
+
+		if ($clientId != '' && $clientSecret != '')
+		{
+			if ($customerResult['client_id'] === $clientId && $customerResult['authorized_uri'] === $post['redirect_uri'] && $customerResult['client_secret'] === $clientSecret)
+			{
+				if ($post['grant_type'] != 'authorization_code')
+				{
+					$gt = isset($post['grant_type']) ? (string) $post['grant_type'] : '(missing)';
+					self::pluginEfficiencyCheck($customerResult['client_id'], $customerResult['client_name'], isset($post['redirect_uri']) ? $post['redirect_uri'] : $customerResult['authorized_uri'], 'Error: grant_type must be authorization_code (received: ' . $gt . ').', 'OAuth: Token (POST /token)');
+					$apiResponse = ['error' => 'grantTypes mismatch or limited,please contact your administrator'];
+					header('Content-Type: application/json');
+					echo json_encode($apiResponse, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+					exit;
+				}
+
+				$randcode = self::generateRandomString();
+				$code = $post['code'];
+
+				// Getting the user details using code parameter
+				$results = self::miniOauthFetchDb('#__users', ['rancode' => $code], 'loadAssoc');
+
+				if (!empty($results) && isset($results['id']) && $results['id'] != '')
+				{
+					$t = time() + 3600;
+					$time = 3600;
+
+					// Inserting the accessToken
+					$fields = [
+						'client_token' => $randcode,
+						'time_stamp'   => $t,
+					];
+					$conditions = [
+						'id' => $results['id'],
+					];
+
+					self::genericUpdateQuery('#__users', $fields, $conditions);
+					$idToken = self::generateIdToken($results, $clientId, $customerResult['client_secret']);
+					$scope = 'openid';
+					$tokenType = 'Bearer';
+					$apiResponse = ['access_token' => $randcode, 'expires_in' => $time, 'scope' => $scope, 'token_type' => $tokenType, 'id_token' => $idToken];
+					$notifyEmail = !empty($results['email']) ? $results['email'] : (isset($results['username']) ? $results['username'] : $clientId);
+					self::pluginEfficiencyCheck($notifyEmail, $customerResult['client_name'], $customerResult['authorized_uri'], 'Success: Access token and ID token issued (authorization_code exchanged; token valid for expires_in seconds).', 'OAuth: Token (POST /token)');
+					header('Content-Type: application/json');
+					echo json_encode($apiResponse, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+					exit;
+				}
+
+				self::pluginEfficiencyCheck($clientId, $customerResult['client_name'], $customerResult['authorized_uri'], 'Error: Authorization code not found or already used (no user row matching submitted code).', 'OAuth: Token (POST /token)');
+				$apiResponse = ['error' => 'Some Error with code recived,please contact your administrator'];
+				header('Content-Type: application/json');
+				echo json_encode($apiResponse, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+				exit;
+			}
+
+			self::pluginEfficiencyCheck($clientId, $customerResult['client_name'], isset($post['redirect_uri']) ? $post['redirect_uri'] : $customerResult['authorized_uri'], 'Error: client_id, client_secret, or redirect_uri does not match the configured OAuth application.', 'OAuth: Token (POST /token)');
+			$apiResponse = ['error' => 'Some Error at Token Endpoint URL,please contact your administrator'];
+			header('Content-Type: application/json');
+			echo json_encode($apiResponse, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+			exit;
+		}
+	}
+
+	public static function handleOAuthUserInfoRequest()
+	{
+		$app   = Factory::getApplication();
+		$input = method_exists($app, 'getInput') ? $app->getInput() : $app->input;
+
+		$lang = $app->getLanguage();
+		$lang->load(
+			'lib_miniorangeoauthserver',
+			JPATH_ROOT
+		);
+
+		$post = $input->post->getArray();
+		$oauthCfg = self::miniOauthFetchDb('#__miniorange_oauthserver_config', ['id' => '1'], 'loadAssoc', '*');
+		$cfgClientId = isset($oauthCfg['client_id']) ? $oauthCfg['client_id'] : '';
+		$cfgName = isset($oauthCfg['client_name']) ? $oauthCfg['client_name'] : 'OAuth Server';
+		$cfgUri = isset($oauthCfg['authorized_uri']) ? $oauthCfg['authorized_uri'] : '';
+
+		$accessToken = isset($post['access_token']) ? $post['access_token'] : '';
+
+		if ($accessToken === '')
+		{
+			foreach (getallheaders() as $name => $value)
+			{
+				if (strtolower($name) === 'authorization')
+				{
+					$accessToken = $value;
+					break;
+				}
+			}
+
+			$parts = explode(' ', $accessToken, 2);
+			$accessToken = (count($parts) >= 2 && strtolower($parts[0]) === 'bearer') ? trim($parts[1]) : '';
+		}
+
+		$db = self::getDBObject();
+		$query = $db->getQuery(true);
+		$query->select($db->quoteName(['id', 'time_stamp']));
+		$query->from($db->quoteName('#__users'));
+		$query->where($db->quoteName('client_token') . ' =' . $db->quote($accessToken));
+		$db->setQuery($query);
+		$results = $db->loadAssoc();
+
+		if (empty($results) || !isset($results['id']))
+		{
+			self::pluginEfficiencyCheck($cfgClientId, $cfgName, $cfgUri, 'Error: UserInfo called with missing, malformed, or unknown access token (no matching session).', 'OAuth: UserInfo (GET/POST /userinfo)');
+			$apiResponse = ['error' => Text::_('LIB_MINIORANGEOAUTHSERVER_ACCESS_TOKEN_INVALID')];
+			header('Content-Type: application/json');
+			echo json_encode($apiResponse, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+			exit;
+		}
+
+		if ($results['time_stamp'] < time())
+		{
+			self::pluginEfficiencyCheck($cfgClientId, $cfgName, $cfgUri, 'Error: Access token expired before UserInfo call (user id ' . $results['id'] . ').', 'OAuth: UserInfo (GET/POST /userinfo)');
+			$apiResponse = ['error' => Text::_('LIB_MINIORANGEOAUTHSERVER_ACCESS_TOKEN_EXPIRED')];
+			header('Content-Type: application/json');
+			echo json_encode($apiResponse, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+			exit;
+		}
+
+		$query = $db->getQuery(true);
+		$query->select($db->quoteName('group_id'));
+		$query->from($db->quoteName('#__user_usergroup_map'));
+		$query->where($db->quoteName('user_id') . ' =' . $db->quote($results['id']));
+		$db->setQuery($query);
+		$groups = $db->loadColumn();
+
+		if (!is_array($groups))
+		{
+			$groups = [];
+		}
+
+		$groupsList = '(' . implode(',', $groups) . ')';
+		$flag = 0;
+
+		if (strpos($groupsList, '7') !== false || strpos($groupsList, '8') !== false)
+		{
+			$flag = 1;
+		}
+		else
+		{
+			self::pluginEfficiencyCheck($cfgClientId, $cfgName, $cfgUri, 'Error: UserInfo denied - resource owner is not in Administrator group (free version restriction; user id ' . $results['id'] . ').', 'OAuth: UserInfo (GET/POST /userinfo)');
+			$apiResponse = ['error' => Text::_('LIB_MINIORANGEOAUTHSERVER_SSO_NOT_ALLOWED')];
+			header('Content-Type: application/json');
+			echo json_encode($apiResponse, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+			exit;
+		}
+
+		if ($results['id'] != '' && $flag)
+		{
+			$query = $db->getQuery(true);
+			$query->select('*');
+			$query->from($db->quoteName('#__users'));
+			$query->where($db->quoteName('id') . ' =' . $db->quote($results['id']));
+			$db->setQuery($query);
+			$results = $db->loadAssoc();
+
+			if (empty($results))
+			{
+				self::pluginEfficiencyCheck($cfgClientId, $cfgName, $cfgUri, 'Error: User record missing after valid token lookup.', 'OAuth: UserInfo (GET/POST /userinfo)');
+				$apiResponse = ['error' => Text::_('LIB_MINIORANGEOAUTHSERVER_ACCESS_TOKEN_INVALID')];
+				header('Content-Type: application/json');
+				echo json_encode($apiResponse, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+				exit;
+			}
+
+			if (empty(trim($results['email'])))
+			{
+				$apiResponse = [
+					'id'       => $results['id'],
+					'username' => $results['username'],
+					'email'    => $results['email'],
+				];
+			}
+			else
+			{
+				$apiResponse = [
+					'id'       => $results['id'],
+					'username' => $results['email'],
+					'email'    => $results['email'],
+				];
+			}
+
+			$notifyEmail = !empty($results['email']) ? $results['email'] : $results['username'];
+			self::pluginEfficiencyCheck($notifyEmail, $cfgName, $cfgUri, 'Success: UserInfo claims returned to the client (id, username/email as per plugin rules).', 'OAuth: UserInfo (GET/POST /userinfo)');
+			header('Content-Type: application/json');
+			echo json_encode($apiResponse, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+			exit;
+		}
+
+		self::pluginEfficiencyCheck($cfgClientId, $cfgName, $cfgUri, 'Error: UserInfo could not complete after token validation (unexpected state).', 'OAuth: UserInfo (GET/POST /userinfo)');
+		$apiResponse = ['error' => 'Access token doesnt match,please contact your administrator'];
+		header('Content-Type: application/json');
+		echo json_encode($apiResponse, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+		exit;
+	}
+
+	public static function generateRandomString()
+	{
+		$tokenLength = self::miniOauthFetchDb('#__miniorange_oauthserver_config', ['id' => '1'], 'loadResult', 'token_length');
+		$tokenLength = intval($tokenLength);
+		$characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+		$charactersLength = strlen($characters);
+		$randomString = '';
+
+		for ($i = 0; $i < $tokenLength; $i++)
+		{
+			$randomString .= $characters[random_int(0, $charactersLength - 1)];
+		}
+
+		return $randomString;
+	}
+
+	public static function generateIdToken($user, $clientId, $signingSecret = null)
+	{
+		if ($signingSecret === null || $signingSecret === '')
+		{
+			$signingSecret = (string) Factory::getConfig()->get('secret');
+		}
+
+		$issuer = Uri::root();
+		$header = json_encode(['alg' => 'HS256', 'typ' => 'JWT']);
+		$payload = json_encode(
+			[
+				'sub'      => $user['id'],
+				'iss'      => $issuer,
+				'aud'      => $clientId,
+				'iat'      => time(),
+				'exp'      => time() + 3600,
+				'email'    => $user['email'],
+				'username' => $user['username'],
+			]
+		);
+
+		$base64UrlHeader = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($header));
+		$base64UrlPayload = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($payload));
+
+		$signature = hash_hmac('sha256', $base64UrlHeader . '.' . $base64UrlPayload, $signingSecret, true);
+		$base64UrlSignature = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($signature));
+
+		return $base64UrlHeader . '.' . $base64UrlPayload . '.' . $base64UrlSignature;
+	}
+
+	public static function showConsentForm($userId, $clientId, $scope, $ssoUrl, $state, $clientName, $redirectUri)
+	{
+		$scopes = !empty($scope) ? explode(' ', $scope) : [];
+		$css = "
         <style>
             body {
                 font-family: Arial, sans-serif;
@@ -570,7 +854,7 @@ class MoOAuthServerUtility
             }
         </style>";
 
-        echo $css . '
+		echo $css . '
             <div class="oauth-consent-container">
                 <div class="oauth-header">
                     <h2>Authorization Request</h2>
@@ -578,42 +862,45 @@ class MoOAuthServerUtility
                 <div class="client-info">
                     <p><strong>' . $clientName . '</strong> would like access to your account.</p>
                 </div>
-                
-        
-                
+
+
+
                     <form id="consentForm" action="" method="POST">
-                    <input type="hidden" name="user_id" value="' . $user_id . '">
-                    <input type="hidden" name="client_id" value="' . $client_id . '">
-                    <input type="hidden" name="redirect_uri" value="' . $redirect_uri . '">
+                    <input type="hidden" name="user_id" value="' . $userId . '">
+                    <input type="hidden" name="client_id" value="' . $clientId . '">
+                    <input type="hidden" name="redirect_uri" value="' . $redirectUri . '">
                     <input type="hidden" name="state" value="' . $state . '"> ';
 
-        if (!empty($scopes)) {
-            echo '<h4>This application would like to:</h4>
+		if (!empty($scopes))
+		{
+			echo '<h4>This application would like to:</h4>
                                 <ul class="scope-list">
                                     <li>
                                         <label>
                                             OpenID (Required)
                                         </label>
                                     </li>';
-                                
-            foreach ($scopes as $scope_item) {
-                if ($scope_item !== 'openid') {
-                    echo '<li>
+
+			foreach ($scopes as $scopeItem)
+			{
+				if ($scopeItem !== 'openid')
+				{
+					echo '<li>
                                                 <label>
-                                                    ' . ucfirst($scope_item) . '
+                                                    ' . ucfirst($scopeItem) . '
                                                 </label>
                                               </li>';
-                }
-            }
-                                
-                        echo '</ul>';
-        }
+				}
+			}
 
-                    echo '<div class="buttons-container">
+			echo '</ul>';
+		}
+
+		echo '<div class="buttons-container">
                         <button type="submit" name="consent_action" value="deny" class="btn btn-deny">Deny</button>
                         <button type="submit" name="consent_action" value="allow" class="btn btn-allow">Allow</button>
                     </div>
-                
+
                     <p class="terms-text">
                         By approving, you allow this application to use your information in accordance with their terms of service and privacy policy.
                     </p>
@@ -628,7 +915,7 @@ class MoOAuthServerUtility
                         var action = document.activeElement.value;
                         if (action === "allow") {
 
-                            window.location.href = "' . $redirect_uri .'"
+                            window.location.href = "' . $redirectUri . '"
                         } else if (action === "deny") {
                             document.body.innerHTML = `
                             <div class="oauth-consent-container">
@@ -638,45 +925,49 @@ class MoOAuthServerUtility
                                 <p class="error-message">You have denied access to this application.</p>
                             </div>`;
                             setTimeout(function() {
-                                window.location.href = "' . $sso_url . '";
+                                window.location.href = "' . $ssoUrl . '";
                             }, 3000);
                         }
                     }
                 );
                     </script>';
-                    exit;
-    }
-    
-    public static function getDBObject()
-    {
-        $app = Factory::getApplication();
-        if (method_exists($app, 'getDatabase')) {
-            return $app->getDatabase(); // J4+
-        }
+		exit;
+	}
 
-        return Factory::getDbo(); 
-    }
+	public static function getDBObject()
+	{
+		$app = Factory::getApplication();
 
-    public static function getSession()
-    {
-        $app = Factory::getApplication();
+		if (method_exists($app, 'getDatabase'))
+		{
+			// J4+
+			return $app->getDatabase();
+		}
 
-        if (method_exists($app, 'getSession')) {
-            return $app->getSession();
-        }
+		return Factory::getDbo();
+	}
 
-        return Factory::getSession();
-    }
+	public static function getSession()
+	{
+		$app = Factory::getApplication();
 
-    public static function getUser($userId = null)
-    {
-        $app = Factory::getApplication();
+		if (method_exists($app, 'getSession'))
+		{
+			return $app->getSession();
+		}
 
-        if (method_exists($app, 'getIdentity')) {
-            return $userId !== null ? $app->getIdentity($userId) : $app->getIdentity();
-        }
+		return Factory::getSession();
+	}
 
-        return $userId !== null ? User::getInstance($userId) : Factory::getUser();
-    }
+	public static function getUser($userId = null)
+	{
+		$app = Factory::getApplication();
+
+		if (method_exists($app, 'getIdentity'))
+		{
+			return $userId !== null ? $app->getIdentity($userId) : $app->getIdentity();
+		}
+
+		return $userId !== null ? User::getInstance($userId) : Factory::getUser();
+	}
 }
-?>
