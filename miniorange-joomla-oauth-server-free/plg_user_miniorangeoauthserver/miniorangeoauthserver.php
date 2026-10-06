@@ -84,7 +84,6 @@ class PlgUserMiniorangeoauthserver extends CMSPlugin
 
 			// $ssoUrl = explode("/", $ssoUrl)[2];
 			// $ssoUrl = "https://" . $ssoUrl;
-			MoOAuthServerUtility::pluginEfficiencyCheck($user->get('email'), $responseParams['clientName'], $redirecturi, 'Success: Authorization code generated after end-user login; redirecting to client redirect_uri with code and state.', 'OAuth: Authorize (post-login redirect)');
 			$redirecturi = $redirecturi . "?code=" . $randcode . "&state=" . $state;
 
 			if (isset($responseParams['redirect_uri']))

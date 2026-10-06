@@ -85,18 +85,6 @@ class Pkg_OAUTHSERVERInstallerScript
 			return true;
 		}
 
-		$helperPath = JPATH_ADMINISTRATOR . '/components/com_miniorange_oauthserver/helpers/mo_customer_setup.php';
-
-		if (file_exists($helperPath))
-		{
-			require_once $helperPath;
-
-			if (class_exists('MoOauthServerCustomer'))
-			{
-				MoOauthServerCustomer::sendInstallationNotification();
-			}
-		}
-
 		$this->showInstallMessage('');
 
 	}

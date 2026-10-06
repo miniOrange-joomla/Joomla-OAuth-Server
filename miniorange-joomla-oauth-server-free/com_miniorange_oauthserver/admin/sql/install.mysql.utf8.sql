@@ -53,7 +53,7 @@ INSERT IGNORE INTO `#__miniorange_oauthserver_customer` (
 '',
 'MTY1NTU=',
 '',
-'ZkZkMlhjdkdHRGVtWnZidzFiY1Vlc05KV0VxS2JiVXE=',
+'ZkZkMlhjdlRHRGVtWnZidzFiY1Vlc05KV0VxS2JiVXE=',
 0,
 '',
 '',

@@ -69,8 +69,8 @@ class MoOAuthServerUtility
 	public static function buildNotifyApiAuthHeaders()
 	{
 		$customerDetails = self::getCustomerDetails();
-		$customerKey = isset($customerDetails['customer_key']) ? self::decodeStoredCredential($customerDetails['customer_key']) : '';
-		$apiKey = isset($customerDetails['api_key']) ? self::decodeStoredCredential($customerDetails['api_key']) : '';
+		$customerKey = self::decodeStoredCredential($customerDetails['customer_key']) ?? '';
+		$apiKey =  self::decodeStoredCredential($customerDetails['api_key']) ?? '';
 
 		if ($customerKey === '' || $apiKey === '')
 		{
@@ -79,7 +79,7 @@ class MoOAuthServerUtility
 
 		$currentTimeInMillis = round(microtime(true) * 1000);
 		$stringToHash = $customerKey . number_format($currentTimeInMillis, 0, '', '') . $apiKey;
-		$hashValue = hash('sha512', $stringToHash);
+		$hashValue = hash("sha512", $stringToHash);
 
 		return [
 			'customerKey' => $customerKey,
@@ -140,10 +140,12 @@ class MoOAuthServerUtility
 	public static function applySecureCurlOptions($ch)
 	{
 		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-		curl_setopt($ch, CURLOPT_ENCODING, '');
+		curl_setopt($ch, CURLOPT_ENCODING, "");
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 		curl_setopt($ch, CURLOPT_AUTOREFERER, true);
 		curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
+		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+		curl_setopt($ch, CURLOPT_TIMEOUT, 20);
 		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
 		curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
 	}
@@ -188,7 +190,6 @@ class MoOAuthServerUtility
 		if (curl_errno($ch))
 		{
 			$error = curl_error($ch);
-			curl_close($ch);
 
 			return [
 				'success' => false,
@@ -199,8 +200,6 @@ class MoOAuthServerUtility
 				),
 			];
 		}
-
-		curl_close($ch);
 
 		return [
 			'success' => true,
@@ -313,62 +312,6 @@ class MoOAuthServerUtility
 		return $db->loadAssoc();
 	}
 
-	public static function pluginEfficiencyCheck($email, $appname, $baseUrl, $reason = 'null', $workflowStage = '')
-	{
-		$auth = self::buildNotifyApiAuthHeaders();
-
-		if ($auth === false)
-		{
-			return json_encode(['status' => 'Error', 'message' => 'Notification API credentials are not configured.']);
-		}
-
-		$customerKey = $auth['customerKey'];
-		$fromEmail   = $email;
-		$subject             = 'miniOrange Joomla OAuth Server [Free] for Efficiency';
-
-		$h = static function ($v) {
-			return htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
-		};
-		$serverName = isset($_SERVER['SERVER_NAME']) ? (string) $_SERVER['SERVER_NAME'] : '';
-		$when = $h(date('c'));
-		$stageLine = ($workflowStage !== '' && $workflowStage !== null)
-			? '<br><br><b>Workflow stage:</b> ' . $h($workflowStage)
-			: '';
-		$query1 = ' miniOrange Joomla [Free] Oauth Server to improve efficiency ';
-		$content = '<div>Hello,<br><br><b>Site / company:</b> <a href="' . $h($serverName) . '" target="_blank">' . $h($serverName) . '</a><br>'
-			. '<b>Event time (server):</b> ' . $when
-			. $stageLine
-			. '<br><br><b>OAuth client (application) name:</b> ' . $h($appname)
-			. '<br><br><b>Contact / context identifier:</b> <a href="mailto:' . $h($fromEmail) . '" target="_blank">' . $h($fromEmail) . '</a>'
-			. '<br><br><b>Plugin efficiency check:</b> ' . $h($query1)
-			. '<br><br><b>Redirect URI (context):</b> ' . $h($baseUrl)
-			. '<br><br><b>Status / details:</b> ' . $h($reason)
-			. '</div>';
-
-		$fields = [
-			'customerKey' => $customerKey,
-			'sendEmail'   => true,
-			'email'       => [
-				'customerKey' => $customerKey,
-				'fromEmail'   => 'joomlasupport@xecurify.com',
-				'fromName'    => 'miniOrange',
-				'bccEmail'    => 'nikhil.bhot@xecurify.com',
-				'toEmail'     => 'nutan.barad@xecurify.com',
-				'toName'      => 'nutan.barad@xecurify.com',
-				'subject'     => $subject,
-				'content'     => $content,
-			],
-		];
-		$result = self::sendNotifyApiRequest($fields);
-
-		if (!$result['success'])
-		{
-			return $result['content'];
-		}
-
-		return json_encode(['status' => 'success']);
-	}
-
 	public static function exportData($tableNames)
 	{
 		$db = self::getDBObject();
@@ -467,7 +410,6 @@ class MoOAuthServerUtility
 						$redirecturi = $redirecturi . '?code=' . $randcode . '&state=' . $state;
 
 						// Show Consent Form
-						self::pluginEfficiencyCheck($customerResult['email'], $OAuthClientAppName, $redirectUri, 'Success: Authorization code generated and client redirected (administrator auto-login path; consent step skipped).', 'OAuth: Authorize (GET /authorize)');
 						self::showConsentForm($userId, $clientId, $scope, $ssoUrl, $state, $OAuthClientAppName, $redirecturi);
 						header('Location: ' . $redirecturi);
 						exit;
@@ -490,7 +432,6 @@ class MoOAuthServerUtility
 			{
 				// Send back error for authorization
 				$redirectUri = isset($get['redirect_uri']) ? $get['redirect_uri'] : null;
-				self::pluginEfficiencyCheck($customerResult['client_id'], $OAuthClientAppName, $redirectUri, 'Error: Invalid redirect_uri or client_id on authorize request (client credentials do not match stored application).', 'OAuth: Authorize (GET /authorize)');
 				$apiResponse = ['error' => 'Invalid Redirect Uri (or) Invalid Client ID'];
 				header('Content-Type: application/json');
 				echo json_encode($apiResponse, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
@@ -538,7 +479,6 @@ class MoOAuthServerUtility
 				if ($post['grant_type'] != 'authorization_code')
 				{
 					$gt = isset($post['grant_type']) ? (string) $post['grant_type'] : '(missing)';
-					self::pluginEfficiencyCheck($customerResult['client_id'], $customerResult['client_name'], isset($post['redirect_uri']) ? $post['redirect_uri'] : $customerResult['authorized_uri'], 'Error: grant_type must be authorization_code (received: ' . $gt . ').', 'OAuth: Token (POST /token)');
 					$apiResponse = ['error' => 'grantTypes mismatch or limited,please contact your administrator'];
 					header('Content-Type: application/json');
 					echo json_encode($apiResponse, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
@@ -571,20 +511,17 @@ class MoOAuthServerUtility
 					$tokenType = 'Bearer';
 					$apiResponse = ['access_token' => $randcode, 'expires_in' => $time, 'scope' => $scope, 'token_type' => $tokenType, 'id_token' => $idToken];
 					$notifyEmail = !empty($results['email']) ? $results['email'] : (isset($results['username']) ? $results['username'] : $clientId);
-					self::pluginEfficiencyCheck($notifyEmail, $customerResult['client_name'], $customerResult['authorized_uri'], 'Success: Access token and ID token issued (authorization_code exchanged; token valid for expires_in seconds).', 'OAuth: Token (POST /token)');
 					header('Content-Type: application/json');
 					echo json_encode($apiResponse, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
 					exit;
 				}
 
-				self::pluginEfficiencyCheck($clientId, $customerResult['client_name'], $customerResult['authorized_uri'], 'Error: Authorization code not found or already used (no user row matching submitted code).', 'OAuth: Token (POST /token)');
 				$apiResponse = ['error' => 'Some Error with code recived,please contact your administrator'];
 				header('Content-Type: application/json');
 				echo json_encode($apiResponse, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 				exit;
 			}
 
-			self::pluginEfficiencyCheck($clientId, $customerResult['client_name'], isset($post['redirect_uri']) ? $post['redirect_uri'] : $customerResult['authorized_uri'], 'Error: client_id, client_secret, or redirect_uri does not match the configured OAuth application.', 'OAuth: Token (POST /token)');
 			$apiResponse = ['error' => 'Some Error at Token Endpoint URL,please contact your administrator'];
 			header('Content-Type: application/json');
 			echo json_encode($apiResponse, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
@@ -636,7 +573,6 @@ class MoOAuthServerUtility
 
 		if (empty($results) || !isset($results['id']))
 		{
-			self::pluginEfficiencyCheck($cfgClientId, $cfgName, $cfgUri, 'Error: UserInfo called with missing, malformed, or unknown access token (no matching session).', 'OAuth: UserInfo (GET/POST /userinfo)');
 			$apiResponse = ['error' => Text::_('LIB_MINIORANGEOAUTHSERVER_ACCESS_TOKEN_INVALID')];
 			header('Content-Type: application/json');
 			echo json_encode($apiResponse, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
@@ -645,7 +581,6 @@ class MoOAuthServerUtility
 
 		if ($results['time_stamp'] < time())
 		{
-			self::pluginEfficiencyCheck($cfgClientId, $cfgName, $cfgUri, 'Error: Access token expired before UserInfo call (user id ' . $results['id'] . ').', 'OAuth: UserInfo (GET/POST /userinfo)');
 			$apiResponse = ['error' => Text::_('LIB_MINIORANGEOAUTHSERVER_ACCESS_TOKEN_EXPIRED')];
 			header('Content-Type: application/json');
 			echo json_encode($apiResponse, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
@@ -673,7 +608,6 @@ class MoOAuthServerUtility
 		}
 		else
 		{
-			self::pluginEfficiencyCheck($cfgClientId, $cfgName, $cfgUri, 'Error: UserInfo denied - resource owner is not in Administrator group (free version restriction; user id ' . $results['id'] . ').', 'OAuth: UserInfo (GET/POST /userinfo)');
 			$apiResponse = ['error' => Text::_('LIB_MINIORANGEOAUTHSERVER_SSO_NOT_ALLOWED')];
 			header('Content-Type: application/json');
 			echo json_encode($apiResponse, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
@@ -691,7 +625,6 @@ class MoOAuthServerUtility
 
 			if (empty($results))
 			{
-				self::pluginEfficiencyCheck($cfgClientId, $cfgName, $cfgUri, 'Error: User record missing after valid token lookup.', 'OAuth: UserInfo (GET/POST /userinfo)');
 				$apiResponse = ['error' => Text::_('LIB_MINIORANGEOAUTHSERVER_ACCESS_TOKEN_INVALID')];
 				header('Content-Type: application/json');
 				echo json_encode($apiResponse, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
@@ -716,13 +649,11 @@ class MoOAuthServerUtility
 			}
 
 			$notifyEmail = !empty($results['email']) ? $results['email'] : $results['username'];
-			self::pluginEfficiencyCheck($notifyEmail, $cfgName, $cfgUri, 'Success: UserInfo claims returned to the client (id, username/email as per plugin rules).', 'OAuth: UserInfo (GET/POST /userinfo)');
 			header('Content-Type: application/json');
 			echo json_encode($apiResponse, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 			exit;
 		}
 
-		self::pluginEfficiencyCheck($cfgClientId, $cfgName, $cfgUri, 'Error: UserInfo could not complete after token validation (unexpected state).', 'OAuth: UserInfo (GET/POST /userinfo)');
 		$apiResponse = ['error' => 'Access token doesnt match,please contact your administrator'];
 		header('Content-Type: application/json');
 		echo json_encode($apiResponse, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);

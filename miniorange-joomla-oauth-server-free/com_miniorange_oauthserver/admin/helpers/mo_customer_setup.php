@@ -53,8 +53,6 @@ class MoOauthServerCustomer
 
 		$customerKey = $auth['customerKey'];
 		$phpVersion 		= phpversion();
-		$adminEmail         = self::getApplicationUserEmail($email);
-		$currentUserEmail   = $adminEmail;
 		$fromEmail 			= $email;
 		$jVersion 			= new Version;
 		$jCmsVersion 		= $jVersion->getShortVersion();
@@ -65,7 +63,6 @@ class MoOauthServerCustomer
 		$content = '<div>Hello, <br><br>
         <strong>Company : </strong><a href="' . $_SERVER['SERVER_NAME'] . '" target="_blank" >' . $_SERVER['SERVER_NAME'] . '</a><br><br>
         <strong>Email : </strong><a href="mailto:' . $fromEmail . '" target="_blank">' . $fromEmail . '</a><br><br>
-        <strong>Admin Email : </strong><a href="mailto:' . $adminEmail . '" target="_blank">' . $adminEmail . '</a><br><br>
         <strong>Demo for plugin : </strong>' . $plan . '<br><br>
         <strong>Description: </strong>' . $description . '<br><br>
         <strong>Timezone: </strong>' . $timezone . '</div>';
@@ -99,7 +96,6 @@ class MoOauthServerCustomer
 		$customerKey = $auth['customerKey'];
 		$app = Factory::getApplication();
 
-		$adminEmail         = self::getApplicationUserEmail($email);
 		$fromEmail          = $email;
 		$jVersion           = new Version;
 		$phpVersion         = phpversion();
@@ -124,7 +120,6 @@ class MoOauthServerCustomer
 		$content = '<div>Hello, <br><br>
                         <strong>Company :</strong> <a href="' . $_SERVER['SERVER_NAME'] . '" target="_blank" >' . $_SERVER['SERVER_NAME'] . '</a><br><br>
                         <strong>Email : </strong> <a href="mailto:' . $fromEmail . '" target="_blank">' . $fromEmail . '</a><br><br>
-                        <strong>Admin Email : </strong><a href="mailto:' . $adminEmail . '" target="_blank">' . $adminEmail . '</a><br><br>
                         <strong>Plugin Deactivated:</strong> ' . $query1 . '<br><br>
                         <strong>Reason:</strong> ' . $query . ' <br><br>
                         <strong>System Information:</strong> Joomla: ' . $jCmsVersion . ' | PHP: ' . $phpVersion . ' | Plugin: ' . $moPluginVersion . ' | OS: ' . $osName . ' ' . $osRelease . ' ' . $osArch . ' | Timezone: ' . $timezone . '</div>';
@@ -148,59 +143,6 @@ class MoOauthServerCustomer
 		return $result['content'];
 	}
 
-	public static function sendInstallationNotification()
-	{
-		$auth = MoOAuthServerUtility::buildNotifyApiAuthHeaders();
-
-		if ($auth === false)
-		{
-			return json_encode(array("status" => 'CURL_ERROR', 'statusMessage' => 'Notification API credentials are not configured.'));
-		}
-
-		$customerKey = $auth['customerKey'];
-		$app = Factory::getApplication();
-		$adminEmail         = self::getApplicationUserEmail('');
-
-		$jVersion = new Version;
-		$phpVersion = phpversion();
-		$osName = php_uname('s');
-		$osRelease = php_uname('r');
-		$osArch = php_uname('m');
-		$timezone = self::getUserTimezone();
-		$jCmsVersion = $jVersion->getShortVersion();
-		$moPluginVersion = MoOAuthServerUtility::getPluginVersion();
-		$subject = "Installation of Joomla OAuth Server [Free]";
-
-		$content = '<div> Hello, <br><br>
-        <strong>Company: </strong><a href="' . $_SERVER['SERVER_NAME'] . '" target="_blank" >' . $_SERVER['SERVER_NAME'] . '</a><br>
-        <strong>Admin Email: </strong><a href="mailto:' . $adminEmail . '" target="_blank">' . $adminEmail . '</a><br>
-        <strong>System Information: </strong> Joomla ' . $jCmsVersion . ' | PHP ' . $phpVersion . ' | OS ' . $osName . ' ' . $osRelease . ' | Plugin Version ' . $moPluginVersion . ' | Timezone ' . $timezone . '</div>';
-
-		$fields = array(
-			'customerKey'    => $customerKey,
-			'sendEmail'      => true,
-			'email'          => array(
-			'customerKey'    => $customerKey,
-			'fromEmail'      => 'joomlasupport@xecurify.com',
-			'fromName'       => 'miniOrange',
-			'toEmail'        => 'nutan.barad@xecurify.com',
-			'toName'         => 'nutan.barad@xecurify.com',
-			'bccEmail'      => 'nikhil.bhot@xecurify.com',
-			'subject'        => $subject,
-			'content'        => $content
-			),
-		);
-
-		$result = MoOAuthServerUtility::sendNotifyApiRequest($fields);
-
-		if (!$result['success'])
-		{
-			return $result['content'];
-		}
-
-		return;
-	}
-
 	public function submitContactUs($qEmail, $qPhone, $query)
 	{
 		$auth = MoOAuthServerUtility::buildNotifyApiAuthHeaders();
@@ -212,8 +154,6 @@ class MoOauthServerCustomer
 
 		$customerKey = $auth['customerKey'];
 		$app = Factory::getApplication();
-		$adminEmail         = self::getApplicationUserEmail($qEmail);
-		$currentUserEmail   = $adminEmail;
 		$jVersion = new Version;
 		$phpVersion = phpversion();
 		$osName = php_uname('s');
@@ -227,7 +167,6 @@ class MoOauthServerCustomer
 		$content = '<div >Hello, <br><br>
         <strong>Company</strong> :<a href="' . $_SERVER['SERVER_NAME'] . '" target="_blank" >' . $_SERVER['SERVER_NAME'] . '</a><br><br>
         <strong>Phone Number</strong> :' . $qPhone . '<br><br>
-        <strong>Admin Email : </strong><a href="mailto:' . $adminEmail . '" target="_blank">' . $adminEmail . '</a><br><br>
         <strong>Email :</strong><a href="mailto:' . $qEmail . '" target="_blank">' . $qEmail . '</a><br><br>
         <strong>Query</strong>: ' . $query . '<br><br>
         <strong>System Information:</strong> Joomla ' . $jCmsVersion . ' | PHP ' . $phpVersion . ' | OS ' . $osName . ' ' . $osRelease . ' ' . $osArch . ' | Plugin Version ' . $moPluginVersion . ' | Timezone ' . $timezone . '</div>';
@@ -277,18 +216,6 @@ class MoOauthServerCustomer
 		}
 
 		return $user;
-	}
-
-	private static function getApplicationUserEmail($fallback = '')
-	{
-		$user = self::getApplicationUser();
-
-		if ($user !== null && !empty($user->email))
-		{
-			return $user->email;
-		}
-
-		return $fallback;
 	}
 
 	public static function getUserTimezone()

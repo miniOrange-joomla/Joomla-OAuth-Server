@@ -81,7 +81,6 @@ class MiniorangeoauthserverControllerAccountSetup extends FormController
 		);
 
 		MoOAuthServerUtility::genericUpdateQuery("#__miniorange_oauthserver_config", $fields, $conditions);
-		MoOAuthServerUtility::pluginEfficiencyCheck($user->get('email'), $post['mo_oauth_custom_client_name'], $authorizedUri, 'Success: OAuth client application saved (client_id / secret generated; redirect URI registered).', 'Admin: Client configuration');
 		$this->setRedirect('index.php?option=com_miniorange_oauthserver&tab-panel=configuration&pa=2', Text::_('COM_MINIORANGE_OAUTHSERVER_CLIENT_ADDED_SUCCESSFULLY'));
 	}
 
@@ -105,7 +104,6 @@ class MiniorangeoauthserverControllerAccountSetup extends FormController
 		MoOAuthServerUtility::genericUpdateQuery("#__miniorange_oauthserver_config", $fields, $conditions);
 		$app = Factory::getApplication();
 		$user = method_exists($app, 'getIdentity') ? $app->getIdentity() : Factory::getUser();
-		MoOAuthServerUtility::pluginEfficiencyCheck($user->get('email'), '(deleted client)', '', 'Success: OAuth client application removed from Joomla (client_id, secret, and redirect URI cleared).', 'Admin: Client configuration (delete)');
 
 		$this->setRedirect('index.php?option=com_miniorange_oauthserver&tab-panel=configuration', Text::_('COM_MINIORANGE_OAUTHSERVER_CLIENT_DELETE_SUCCESSFULLY'));
 
@@ -147,7 +145,6 @@ class MiniorangeoauthserverControllerAccountSetup extends FormController
 		$user = method_exists($app, 'getIdentity') ? $app->getIdentity() : Factory::getUser();
 		$cfg = MoOAuthServerUtility::miniOauthFetchDb('#__miniorange_oauthserver_config', array('id' => '1'), 'loadAssoc', '*');
 		$appLabel = isset($cfg['client_name']) ? $cfg['client_name'] : 'OAuth application';
-		MoOAuthServerUtility::pluginEfficiencyCheck($user->get('email'), $appLabel, $authorizedUri, 'Success: OAuth client redirect URI updated in administrator configuration.', 'Admin: Client configuration (update)');
 
 		$this->setRedirect('index.php?option=com_miniorange_oauthserver&tab-panel=configuration&pa=2', Text::_('COM_MINIORANGE_OAUTHSERVER_CLIENT_UPDATE_SUCCESSFULLY'));
 	}

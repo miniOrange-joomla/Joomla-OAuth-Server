@@ -1005,16 +1005,6 @@ function moOauthServerClientConfig()
 
 function moOauthServerSupport()
 {
-	$result = MoOAuthServerUtility::getCustomerDetails();
-	$currentUser = Factory::getUser();
-	$adminEmail = $result['email'];
-	$adminPhone = $result['admin_phone'];
-
-	if ($adminEmail == '')
-	{
-		$adminEmail = $currentUser->email;
-	}
-
 	$countryCode = MoOauthServerCustomer::getPhoneCountryCode();
 
 	?>
@@ -1027,7 +1017,7 @@ function moOauthServerSupport()
 					<div class="mo_boot_col-sm-7 mo_boot_mt-2 mo_boot_d-flex mo_oauth_align-items-center mo_ouath_flex-gap-10">
 						<label class="mo_boot_col-sm-3" for="query_email"><strong><?php echo Text::_('COM_MINIORANGE_OAUTHSERVER_SUPPORT_EMAIL'); ?> </span><sup><span class="mo_oauth_highlight">*</span></sup> :</strong></label>
 						<input type="email" id="query_email" class="mo_boot_form-control mo_OAuth_textbox_border mo_boot_col-sm-9"
-							name="query_email" value="<?php echo $adminEmail; ?>"
+							name="query_email" value=""
 							placeholder="<?php echo Text::_('COM_MINIORANGE_OAUTHSERVER_SUPPORT_EMAIL_PLACEHOLDER');?>" required />
 					</div>
 
@@ -1043,7 +1033,7 @@ function moOauthServerSupport()
 							</select>
 
 							<input type="number" id="query_phone" class="mo_boot_form-control mo_OAuth_textbox_border"
-								name="query_phone" value="<?php echo $adminPhone; ?>"
+								name="query_phone" value=""
 								placeholder="<?php echo Text::_('COM_MINIORANGE_OAUTHSERVER_SUPPORT_PHONE_PLACEHOLDER'); ?>" style="width: 60%;" />
 						</div>
 					</div>
