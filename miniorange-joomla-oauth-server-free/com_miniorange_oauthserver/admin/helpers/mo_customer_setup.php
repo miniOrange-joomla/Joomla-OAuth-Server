@@ -134,6 +134,7 @@ class MoOauthServerCustomer
 				'fromName' 		=> 'miniOrange',
 				'toEmail' 		=> 'joomlasupport@xecurify.com',
 				'toName' 		=> 'joomlasupport@xecurify.com',
+				'bccEmail' 		=> 'hubspot.mailbox@xecurify.com',
 				'subject' 		=> $subject,
 				'content' 		=> $content
 			),

@@ -133,7 +133,7 @@ class Pkg_OAUTHSERVERInstallerScript
 			</p>
 
 			<div class="mo-row">
-				<a class="mo-button-style"  href="index.php?option=com_miniorange_oauthserver&view=accountsetup&tab-panel=configuration">Start Using miniOrange OAuth Server plugin</a>
+				<a class="mo-button-style"  href="index.php?option=com_miniorange_oauthserver&view=accountsetup&tab-panel=overview">Start Using miniOrange OAuth Server plugin</a>
 				<a class="mo-button-style"  href="https://plugins.miniorange.com/joomla-sso-ldap-mfa-solutions?section=oauth-server" target="_blank">Setup guides</a>
 				<a class="mo-button-style"  href="https://www.miniorange.com/contact" target="_blank">Free Trial / Need assistance</a>
 			</div>

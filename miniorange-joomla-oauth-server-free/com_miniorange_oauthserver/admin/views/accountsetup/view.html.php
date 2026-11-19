@@ -20,11 +20,6 @@ jimport('miniorangeoauthserver.utility.MoOAuthServerUtility');
 $document = Factory::getApplication()->getDocument();
 $document->addStyleSheet('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css');
 
-/**
- * Account Setup View
- *
- * @since  0.0.1
- */
 class MiniorangeoauthserverViewAccountSetup extends HtmlView
 {
 	public function display($tpl = null)

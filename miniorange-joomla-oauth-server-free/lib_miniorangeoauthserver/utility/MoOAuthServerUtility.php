@@ -70,7 +70,7 @@ class MoOAuthServerUtility
 	{
 		$customerDetails = self::getCustomerDetails();
 		$customerKey = self::decodeStoredCredential($customerDetails['customer_key']) ?? '';
-		$apiKey =  self::decodeStoredCredential($customerDetails['api_key']) ?? '';
+		$apiKey = self::decodeStoredCredential($customerDetails['api_key']) ?? '';
 
 		if ($customerKey === '' || $apiKey === '')
 		{
